@@ -39,8 +39,15 @@ DEFAULT_MAX_DISTANCE = 0.5
 state: dict = {}
 
 
-@app.on_event("startup")
-def build_index() -> None:
+def build_index_state() -> dict:
+    """Build/rebuild the Chroma index and return the shared state dict.
+
+    Split out from the startup event (below) so callers that can't rely on
+    a mounted sub-app's startup event actually firing — notably the
+    Hugging Face Space entrypoint, which mounts this app under Gradio's
+    `gr.Server` — can call it directly at module scope instead. See
+    `app.py` at the project root.
+    """
     docs = load_documents()
     records = [chunk for doc in docs for chunk in chunk_document(doc["source"], doc["text"])]
     embeddings = embed([r["text"] for r in records])
@@ -54,10 +61,18 @@ def build_index() -> None:
         metadatas=[{"source": r["source"], "chunk_index": r["chunk_index"]} for r in records],
     )
 
-    state["collection"] = collection
-    state["docs"] = {d["source"]: d["text"] for d in docs}
-    state["doc_count"] = len(docs)
     print(f"[startup] indexed {len(docs)} doc(s), {collection.count()} chunk(s)")
+    return {
+        "collection": collection,
+        "docs": {d["source"]: d["text"] for d in docs},
+        "doc_count": len(docs),
+    }
+
+
+@app.on_event("startup")
+def _on_startup() -> None:
+    if "collection" not in state:  # idempotent: harmless if already populated
+        state.update(build_index_state())
 
 
 # --- request/response models ------------------------------------------
