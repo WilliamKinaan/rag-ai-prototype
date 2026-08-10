@@ -48,5 +48,130 @@
     "query": "What happens to my security deposit after I move out of a rented apartment?",
     "expected_source": "france_tenant_law.md",
     "note": "genuinely ambiguous on purpose: both FR and NL docs discuss deposit return; FR's is a bit more detailed on timing, but a miss here is informative, not a bug"
+  },
+  {
+    "query": "Before an employee can sue over an unfair dismissal, must they first go through a government ministry that tries to resolve it, only sending it to a special court if that fails?",
+    "expected_source": "uae_employment_law.md",
+    "note": "jurisdiction discrimination: UAE's MOHRE-first conciliation before referral to the Labour Court, vs FR's direct court challenge and NL's prior court/UWV approval; no country name in query"
+  },
+  {
+    "query": "Which system does a lease need to be registered in before the authorities will even recognize the contract, for example to set up a utility connection?",
+    "expected_source": "uae_tenant_law.md",
+    "note": "jurisdiction discrimination: UAE's Ejari registration requirement, distinct from FR/NL tenancy docs which have no equivalent mandatory registry; no country name in query"
+  },
+  {
+    "query": "Are there still specific industries where a foreign investor needs a local national partner, even though most sectors now allow full foreign ownership of a company?",
+    "expected_source": "uae_company_formation.md",
+    "note": "UAE's Cabinet-designated 'strategic impact' sectors carve-out from the 100% foreign ownership reform; no FR/NL equivalent in the corpus"
+  },
+  {
+    "query": "Which law governs how companies must handle people's personal data, and does it apply the same way inside special financial zones?",
+    "expected_source": "uae_data_protection_law.md",
+    "note": "paraphrase of PDPL scope/exclusion for DIFC/ADGM; new UAE-only topic, no equivalent doc in the corpus"
+  },
+  {
+    "query": "What's the practical difference between licensing a new business through a mainland economic department versus through an independent free zone authority?",
+    "expected_source": "uae_free_zone_vs_mainland.md",
+    "note": "genuinely ambiguous on purpose: uae_company_formation.md also discusses mainland vs free zone briefly, so a miss toward that doc is informative, not a bug"
+  },
+  {
+    "query": "How can a non-Muslim foreigner make sure their home country's inheritance rules apply to their estate instead of the local default?",
+    "expected_source": "uae_inheritance_wills_expats.md",
+    "note": "paraphrase of DIFC Wills Service / electing home-country succession law; new UAE-only topic, no equivalent doc in the corpus"
+  },
+  {
+    "query": "What's the lightest category of criminal offence, and how short can the punishment for it be?",
+    "expected_source": "uae_criminal_law_overview.md",
+    "note": "paraphrase of the 'infraction' tier (24 hours to 10 days custody) under the Penal Code"
+  },
+  {
+    "query": "Is it a crime to create a fake social media account or email pretending to be someone else?",
+    "expected_source": "uae_cybercrime_law.md",
+    "note": "paraphrase of the impersonation offence under the Cybercrime Law"
+  },
+  {
+    "query": "How many points can build up on my driving licence before it gets suspended, and do they ever expire?",
+    "expected_source": "uae_traffic_law.md",
+    "note": "paraphrase of the 24-black-point suspension threshold and 1-year clearance"
+  },
+  {
+    "query": "If a shop advertises one price but tries to charge me more at checkout, what law protects me?",
+    "expected_source": "uae_consumer_protection_law.md",
+    "note": "paraphrase of the right to the advertised price under Consumer Protection Law"
+  },
+  {
+    "query": "What's the difference between a sale that's taxed at zero percent and one that's fully exempt from this tax?",
+    "expected_source": "uae_vat_law.md",
+    "note": "paraphrase of the zero-rated vs exempt distinction under VAT law"
+  },
+  {
+    "query": "Can a company registered in a free zone still end up paying nine percent tax on some of its income?",
+    "expected_source": "uae_corporate_tax_law.md",
+    "note": "paraphrase of the Qualifying Free Zone Person / qualifying income conditions under Corporate Tax law"
+  },
+  {
+    "query": "Can one spouse end the marriage without proving the other did anything wrong?",
+    "expected_source": "uae_marriage_divorce_law.md",
+    "note": "paraphrase of no-fault unilateral divorce under the Civil Personal Status Law"
+  },
+  {
+    "query": "Can any foreigner buy property anywhere in the city, or only in certain designated neighborhoods?",
+    "expected_source": "uae_real_estate_foreign_ownership.md",
+    "note": "paraphrase of freehold ownership being limited to designated areas"
+  },
+  {
+    "query": "If my cheque bounces because my account doesn't have enough money, can I go to jail for that?",
+    "expected_source": "uae_bounced_cheque_law.md",
+    "note": "paraphrase of decriminalization of ordinary insufficient-funds cheque bounces"
+  },
+  {
+    "query": "Can someone be convicted of laundering money even if they're never charged with the crime that generated it?",
+    "expected_source": "uae_aml_law.md",
+    "note": "paraphrase of money laundering being an independent offence under the AML law"
+  },
+  {
+    "query": "Can a smell or a sound be legally registered as a brand mark, not just a logo or word?",
+    "expected_source": "uae_trademark_law.md",
+    "note": "paraphrase of non-traditional trademark signs (3D, sound, smell, hologram)"
+  },
+  {
+    "query": "Do I need to formally register my book or song somewhere before it's legally protected from copying?",
+    "expected_source": "uae_copyright_law.md",
+    "note": "paraphrase of copyright arising automatically on creation, registration being optional"
+  },
+  {
+    "query": "Is there a faster, lower-bar option for protecting a minor invention that might not qualify for a full patent?",
+    "expected_source": "uae_patent_law.md",
+    "note": "paraphrase of the utility certificate as a lower-threshold alternative to a patent"
+  },
+  {
+    "query": "Is there a court process that lets a struggling company negotiate with creditors instead of being shut down immediately?",
+    "expected_source": "uae_bankruptcy_law.md",
+    "note": "paraphrase of protective composition under the Bankruptcy law"
+  },
+  {
+    "query": "If part of a contract turns out to be invalid, does the clause requiring disputes to go to arbitration still hold?",
+    "expected_source": "uae_arbitration_law.md",
+    "note": "paraphrase of the severability principle under the Arbitration Law"
+  },
+  {
+    "query": "Which residence visa lets me keep my status even after I quit my job, without needing an employer to sponsor me?",
+    "expected_source": "uae_golden_visa_immigration.md",
+    "note": "paraphrase of the Golden Visa not requiring employer/national sponsorship"
+  },
+  {
+    "query": "Is it legal for a household employer to hold onto their housemaid's passport?",
+    "expected_source": "uae_domestic_workers_law.md",
+    "note": "paraphrase of the ban on confiscating a domestic worker's identification documents"
+  },
+  {
+    "query": "Which court only reviews legal questions rather than re-examining the facts of a case, and is there a minimum amount in dispute to reach it?",
+    "expected_source": "uae_court_system_litigation.md",
+    "note": "paraphrase of the Court of Cassation's law-only review and the AED 500,000 threshold"
+  },
+  {
+    "query": "How is my payment for an unbuilt apartment protected if the developer runs into financial trouble before finishing it?",
+    "expected_source": "uae_real_estate_escrow_law.md",
+    "note": "paraphrase of ring-fenced escrow accounts for off-plan real estate payments"
   }
 ]
