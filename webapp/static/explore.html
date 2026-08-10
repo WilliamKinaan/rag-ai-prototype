@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RAG Pipeline — Interactive Demo</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="disclaimer">
+    ⚠️ <strong>Testing prototype — not legal advice.</strong> This is a demo of
+    search technology only. Its sample documents are simplified, illustrative
+    summaries that may be incomplete or inaccurate, and results must never be
+    used as a substitute for advice from a qualified lawyer. Do not rely on
+    anything from this page for any real decision.
+  </div>
+
+  <header>
+    <p class="back-link"><a href="/">← Back to simple search</a></p>
+    <h1>RAG Pipeline — Interactive Demo</h1>
+    <p class="subtitle">Semantic search, no LLM (V1). Each step below is a real call to the backend.</p>
+  </header>
+
+  <main>
+    <section id="chunking" class="step">
+      <h2>1. Chunking</h2>
+      <p>Paste (or edit) some text, then split it into overlapping chunks the way <code>chunking.py</code> does.</p>
+      <textarea id="chunk-input" rows="8"></textarea>
+      <button id="chunk-btn">Chunk it</button>
+      <div id="chunk-output" class="output"></div>
+    </section>
+
+    <section id="embedding" class="step">
+      <h2>2. Embedding</h2>
+      <p>Turn the chunks above into vectors using <code>BAAI/bge-m3</code>. Only a preview of each 1024-dim vector is shown.</p>
+      <button id="embed-btn" disabled>Embed the chunks above</button>
+      <div id="embed-output" class="output"></div>
+    </section>
+
+    <section id="storage" class="step">
+      <h2>3. Storage</h2>
+      <p>What's actually indexed right now, in the persisted vector store.</p>
+      <div id="storage-output" class="output">Loading…</div>
+      <p class="explore-link"><a href="/corpus.html">View the corpus used →</a></p>
+    </section>
+
+    <section id="query" class="step">
+      <h2>4. Query</h2>
+      <p>Ask a question. It gets embedded and compared against the indexed sample corpus — and, if you embedded text above, against your own text too (not indexed, compared live for comparison only).</p>
+      <input id="query-input" type="text" placeholder="e.g. Do I need a notary to set up my company?" />
+      <div class="threshold-row">
+        <label for="max-distance">Max distance (hide weaker matches):</label>
+        <input id="max-distance" type="number" min="0" max="2" step="0.01" value="0.5" />
+      </div>
+      <button id="query-btn">Search</button>
+      <div id="query-output" class="output"></div>
+    </section>
+  </main>
+
+  <script src="/common.js"></script>
+  <script src="/explore.js"></script>
+</body>
+</html>

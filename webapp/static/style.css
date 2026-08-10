@@ -1,0 +1,200 @@
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --border: #2a2e38;
+  --text: #e6e8eb;
+  --muted: #8b909c;
+  --accent: #5b8cff;
+  --accent-text: #0b0d12;
+  --good: #4caf7d;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.disclaimer {
+  background: #3a1f1f;
+  color: #ffd9d9;
+  border-bottom: 2px solid #a33;
+  padding: 0.85rem 1.5rem;
+  text-align: center;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.disclaimer strong { color: #ff6b6b; }
+
+header {
+  padding: 2rem 1.5rem 1rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+h1 { margin: 0 0 0.25rem; font-size: 1.6rem; }
+.subtitle { color: var(--muted); margin: 0; }
+
+.back-link { margin: 0 0 0.75rem; }
+.back-link a, .explore-link a { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+.back-link a:hover, .explore-link a:hover { text-decoration: underline; }
+.explore-link { text-align: center; margin-top: 0.5rem; }
+
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.step {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+}
+
+.step h2 { margin-top: 0; font-size: 1.1rem; }
+.step p { color: var(--muted); font-size: 0.92rem; }
+
+code {
+  background: #1e222b;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+textarea, input[type="text"] {
+  width: 100%;
+  background: #0d0f14;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.92rem;
+  resize: vertical;
+}
+
+button {
+  margin-top: 0.75rem;
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: 6px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: var(--border);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+button:not(:disabled):hover { filter: brightness(1.1); }
+
+.output {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.card {
+  background: #0d0f14;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.88rem;
+}
+
+.card .meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-bottom: 0.3rem;
+}
+
+.card .distance { color: var(--good); font-weight: 600; }
+
+.result-group h3 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  margin: 0.5rem 0 0.4rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+.stat {
+  background: #0d0f14;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+}
+
+.stat .value { font-size: 1.2rem; font-weight: 700; }
+.stat .label { color: var(--muted); font-size: 0.78rem; }
+
+.vec-preview {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.error { color: #e05a5a; }
+
+.threshold-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.threshold-row input[type="number"] {
+  width: 5.5rem;
+  flex: none;
+}
+
+.corpus-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.corpus-list a {
+  display: block;
+  background: #0d0f14;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.7rem 0.9rem;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.corpus-list a:hover { border-color: var(--accent); }
+.corpus-list .filename { color: var(--muted); font-size: 0.8rem; }
+
+.doc-content {
+  white-space: pre-wrap;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}

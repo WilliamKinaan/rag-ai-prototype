@@ -1,0 +1,52 @@
+[
+  {
+    "query": "Can my employer dismiss me first and let me challenge it afterward in court, rather than needing a judge's approval beforehand?",
+    "expected_source": "france_employment_law.md",
+    "note": "jurisdiction discrimination: FR is dismiss-first/contest-after, no country name in query"
+  },
+  {
+    "query": "Before my employer can end my contract, do they need permission from a court or government agency first?",
+    "expected_source": "netherlands_employment_law.md",
+    "note": "jurisdiction discrimination: NL requires prior UWV/kantonrechter approval, no country name in query"
+  },
+  {
+    "query": "Is there a specialized commission that can rule on whether my rent is too high, separate from the regular courts?",
+    "expected_source": "netherlands_tenant_law.md",
+    "note": "jurisdiction discrimination: NL huurcommissie, no country name in query"
+  },
+  {
+    "query": "Is there a rule that stops landlords from evicting tenants during the winter, even with a court order?",
+    "expected_source": "france_tenant_law.md",
+    "note": "jurisdiction discrimination: FR trêve hivernale, no country name in query"
+  },
+  {
+    "query": "Do I need to go through a notary to legally set up my company, or can the founders just sign the paperwork themselves?",
+    "expected_source": "netherlands_company_formation.md",
+    "note": "jurisdiction discrimination: NL notarial deed is mandatory, no country name in query"
+  },
+  {
+    "query": "Which court-affiliated registry handles new company registration paperwork?",
+    "expected_source": "france_company_formation.md",
+    "note": "jurisdiction discrimination: FR's RCS filing is via the commercial court registry, unlike NL's KVK; no country name in query"
+  },
+  {
+    "query": "What types of employment agreements exist under French law — permanent versus temporary?",
+    "expected_source": "france_employment_law.md",
+    "note": "paraphrase of CDI/CDD without using those terms"
+  },
+  {
+    "query": "How well protected are renters from being kicked out by their landlord?",
+    "expected_source": "netherlands_tenant_law.md",
+    "note": "paraphrase of huurbescherming"
+  },
+  {
+    "query": "Which chamber-of-commerce-style trade register do new companies need to sign up with?",
+    "expected_source": "netherlands_company_formation.md",
+    "note": "paraphrase of KVK (Kamer van Koophandel = Chamber of Commerce)"
+  },
+  {
+    "query": "What happens to my security deposit after I move out of a rented apartment?",
+    "expected_source": "france_tenant_law.md",
+    "note": "genuinely ambiguous on purpose: both FR and NL docs discuss deposit return; FR's is a bit more detailed on timing, but a miss here is informative, not a bug"
+  }
+]

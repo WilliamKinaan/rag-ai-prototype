@@ -1,0 +1,8 @@
+chromadb==1.5.9
+# Pinned below torch's ceiling on this platform (Intel Mac / macOS x86_64,
+# Python 3.12): torch only ships up to 2.2.2 here, and transformers>=4.5x
+# hard-requires torch>=2.4, which breaks the import chain. sentence-transformers
+# 3.3.1 + transformers 4.46.3 is the newest combo that works with torch 2.2.2.
+sentence-transformers==3.3.1
+transformers==4.46.3
+numpy<2
