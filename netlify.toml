@@ -1,0 +1,14 @@
+[build]
+  publish = "webapp/static"
+
+# This is a static-only deploy: no build command, no functions. It serves
+# webapp/static/ as the site root, so the frontend's existing absolute
+# asset paths (/style.css, /common.js, etc.) resolve correctly -- same
+# reason they work when uvicorn serves this app locally (its StaticFiles
+# mount is also at "/"). No files under webapp/static/ needed changing.
+#
+# There is intentionally no backend here. This app's model (BAAI/bge-m3,
+# ~2.3GB) cannot run on Netlify Functions (1GB memory cap) -- see
+# CONTEXT-webapp.md. Anything hitting /api/* (Search, chunking, embedding)
+# will 404 and the UI will show its existing "Something went wrong" error
+# -- expected, not a bug, per explicit decision to accept this tradeoff.
