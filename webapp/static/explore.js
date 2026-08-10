@@ -113,7 +113,7 @@ $("query-btn").addEventListener("click", async () => {
   if (!query) return;
 
   const maxDistance = parseFloat($("max-distance").value);
-  const threshold = Number.isFinite(maxDistance) ? maxDistance : 0.5;
+  const threshold = Number.isFinite(maxDistance) ? maxDistance : 0.6;
 
   btn.disabled = true;
   output.innerHTML = "Searching…";

@@ -1,8 +1,9 @@
-// Query-only landing page (index.html). Requires common.js loaded first.
-// Default below must match DEFAULT_MAX_DISTANCE in webapp/app.py — the
-// input's value="0.5" in index.html is the actual default; this is just
-// the fallback if that value is somehow missing/unparseable.
-const FALLBACK_MAX_DISTANCE = 0.5;
+// Query-only search page (search.html) — chunks only, no LLM. Requires
+// common.js loaded first. Default below must match DEFAULT_MAX_DISTANCE
+// in webapp/app.py — the input's value="0.6" in search.html is the
+// actual default; this is just the fallback if that value is somehow
+// missing/unparseable.
+const FALLBACK_MAX_DISTANCE = 0.6;
 
 $("query-btn").addEventListener("click", async () => {
   const output = $("query-output");

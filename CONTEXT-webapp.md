@@ -1,7 +1,52 @@
 # Context: Interactive Web Demo (V1.5)
 
 _Last updated: 2026-08-10_
-**Status: implemented and smoke-tested locally. Not yet deployed (deployment deliberately deferred — see bottom).**
+**Status: implemented and smoke-tested locally. Static-only deploy live on Netlify (see below). Full backend deployment (Hugging Face Space) blocked/paused — see the Space section further down.**
+
+## Netlify deploy — static frontend only, by explicit choice
+
+Live at `https://rag-ai-prototype.netlify.app/` (GitHub-connected continuous
+deployment — pushing to `main` triggers a new Netlify build automatically).
+
+**What works:** the UI shell — all 4 pages, correct CSS/JS, correct look.
+**What doesn't:** everything under `/api/*` — search, chunking, embedding,
+corpus browsing all 404. This is intentional, not a bug to fix: the
+model (`BAAI/bge-m3`, ~2.3GB) cannot run on Netlify Functions (1GB memory
+cap — a hard platform ceiling, not a config/timeout issue). The user
+explicitly chose to accept a non-functional backend in exchange for the
+frontend looking right on Netlify, rather than rearchitecting to either
+(a) split hosting (Netlify frontend + backend hosted elsewhere) or
+(b) rewrite as fully client-side ML (transformers.js in-browser) — both
+discussed and set aside for now.
+
+**Root cause of the original breakage, for the record:** Netlify had no
+`netlify.toml`/build config, so it defaulted to publishing the *entire
+git repo* as static files, with the repo root as the site root. That's
+why `/` 404'd (no `index.html` at repo root) while `/webapp/static/`
+found the page — but the page's absolute asset paths (`/style.css`,
+`/common.js`, etc., correct for local `uvicorn` where `StaticFiles` is
+mounted at app-root `/`) resolved against the wrong root and 404'd too.
+
+**Fix** (`netlify.toml`, repo root):
+```toml
+[build]
+  publish = "webapp/static"
+```
+This makes Netlify serve `webapp/static/` *as* the site root, which is
+exactly what `uvicorn`/FastAPI already does locally — so the fix required
+**zero changes to any file under `webapp/static/`**. Same absolute paths,
+correct in both places now.
+
+Also removed a stray `runtime.txt` (`3.12`) from an earlier deploy
+attempt — a Heroku convention Netlify never uses; it did nothing here and
+would have misled a future reader into thinking Netlify runs Python.
+
+**Known follow-up, not yet resolved:** the Netlify site currently has
+some form of visitor-access restriction enabled (anonymous requests,
+including `curl`, get redirected to a Netlify login page —
+`app.netlify.com/edge-access?...`). Check Site settings → Visitor access
+in the Netlify dashboard if the demo should be publicly viewable without
+a Netlify login.
 
 ## Implementation notes (added after building)
 
@@ -111,6 +156,98 @@ working fine, since those are read fresh from disk regardless). Fix is
 just restarting the affected process. Check `ps aux | grep uvicorn`
 before launching another instance for a smoke test.
 
+### Update: V2 interactive chat (2026-08-10)
+
+Added an LLM generation layer on top of V1.5's retrieval-only pages.
+`CONTEXT.md`'s original V2 plan assumed a locally-run Mistral
+(llama.cpp/Ollama) because the dev machine is CPU-only — that's
+superseded; this uses the **hosted Mistral AI API**, model
+`ministral-8b-latest`, free tier via console.mistral.ai. No local model
+weights, no GPU concern, needs a `MISTRAL_API_KEY`.
+
+**Site structure changed:**
+- `static/index.html` is now the **chat page** (new default homepage,
+  new `chat.js`) — this is the page a first-time visitor lands on.
+- The old query-only landing page moved to `static/search.html` /
+  `search.js` (was `index.html` / `query.js`), unchanged in behavior.
+  Reachable from the chat page's nav row.
+- `explore.html` / `corpus.html`'s back-links, which used to say "← Back
+  to simple search" and point at `/`, now say "← Back to chat" (still
+  `/`, since `/` is the chat page now).
+
+**Backend:** `webapp/llm.py` (new) — no SDK, plain `httpx.post` to
+`https://api.mistral.ai/v1/chat/completions` (checked with `pip install
+--dry-run mistralai` that even the official SDK wouldn't have disturbed
+the pinned `numpy`/`torch`/`transformers`/`pydantic` versions, but
+`httpx`/`python-dotenv` were already present in `rag-env` transitively,
+so a raw REST call needed zero new heavyweight deps). Reads
+`MISTRAL_API_KEY` from a gitignored `.env` (see `.env.example` at repo
+root) via `python-dotenv`, **lazily** — the key is only required when
+`/api/chat` is actually called, so search/explore/corpus keep working
+with no key configured at all.
+
+New endpoint `POST /api/chat` in `app.py`:
+```json
+// request
+{"message": "...", "history": [{"role": "user"|"assistant", "content": "..."}], "k": 3, "max_distance": 0.5}
+// response
+{"reply": "...", "sources": [{"source": "...", "chunk_index": 0, "text": "...", "distance": 0.39}], "no_context": false}
+```
+Reuses the same `embed()` + `search()` (from `src/query.py`) and
+`DEFAULT_MAX_DISTANCE`/`TOP_K` constants `/api/query` already uses — no
+duplicated retrieval logic. Two behaviors worth noting:
+- **Retrieval-query concatenation for follow-ups.** A vague follow-up
+  like "what about in the Netherlands?" is embedded as `<last user turn
+  from history> + " " + message`, not `message` alone, so it still
+  retrieves the right chunks instead of falling through to the
+  no-context path. (The LLM itself still receives the raw `message`,
+  unmodified — only the retrieval embedding uses the concatenation.)
+  Smoke-tested locally: without prior history a vague follow-up can
+  legitimately clear zero chunks; with a relevant prior turn in
+  `history`, retrieval succeeds. In practice, with this corpus's small
+  size (13 chunks) and 0.5 default threshold, most reasonably-phrased
+  legal-sounding queries clear the threshold even without the fix — the
+  concatenation is a robustness safeguard more than something proven to
+  fire constantly on this particular corpus.
+- **No-context short-circuit.** If zero chunks pass `max_distance`, the
+  LLM is never called — a fixed `NO_CONTEXT_REPLY` (`webapp/llm.py`) is
+  returned directly, `no_context: true`, `sources: []`. Deterministic,
+  costs no API tokens, and doesn't depend on the model choosing to
+  refuse. Verified locally (`"what is the capital of France?"` → 200,
+  `no_context: true`, no key required).
+- **System prompt** (`webapp/llm.py`) instructs the model to answer only
+  from the provided context, name its source doc(s), carry the
+  "not legal advice" disclaimer into its own replies, and flag it
+  explicitly if the retrieved context looks like it's the *wrong
+  jurisdiction* for the question — added because `CONTEXT.md` documents
+  hit@1 6/10 with France/Netherlands pairs deliberately hard to
+  distinguish, so a wrong-country top chunk is a real, expected
+  possibility, not a hypothetical.
+
+**Frontend:** `static/chat.js` keeps `history` as a plain in-memory JS
+array (cleared on reload, no persistence — matches the rest of the
+app's stateless design), sends it with every `/api/chat` call, and
+appends the new turn after each response. Sources render via a new
+`renderSources()` helper in `common.js` (compact inline tags with the
+chunk text as a hover title), next to the existing
+`renderResultGroup()` used by the other pages. **Non-streaming** by
+explicit choice — full reply after a short wait, not token-by-token —
+simpler to build/debug, accepted trade-off over a snappier streaming UI.
+
+**Smoke-tested locally** against the already-running dev `uvicorn`
+(no `MISTRAL_API_KEY` set): `/`, `/search.html`, `/explore.html`,
+`/corpus.html`, `/search.js`, `/chat.js` all resolve correctly; old
+`/query.js` correctly 404s; `/api/chat` returns the deterministic
+no-context reply for an off-corpus question with no key needed, and
+correctly fails with a clear 500 (`MISTRAL_API_KEY is not set...`) once
+retrieval succeeds and it tries to actually call Mistral. **Not yet
+tested with a real key** — that needs the user's own free-tier key from
+console.mistral.ai, dropped into a local `.env` (`MISTRAL_API_KEY=...`,
+gitignored). Also not yet pushed: pushing to `main` auto-deploys
+Netlify, which will make the public homepage a chat UI whose only
+action 404s (same class of pre-existing issue as `/api/query` there
+today, not a new regression, but worth knowing before pushing).
+
 ## Goal
 
 Give the existing V1 CLI pipeline (see `CONTEXT.md`) a visual, shareable web
@@ -167,19 +304,31 @@ hosting provider. Reuses the already-verified `src/` pipeline code as-is.
 ```
 rag-prototype/
   src/, data/            unchanged — reused as-is by the webapp
+  .env                   gitignored; MISTRAL_API_KEY=... (see .env.example)
   webapp/
-    requirements.txt      webapp-only deps (fastapi, uvicorn + local pins)
+    requirements.txt      webapp-only deps (fastapi, uvicorn, httpx,
+                           python-dotenv + local pins)
     app.py                 FastAPI app: startup loads model + rebuilds
                             chroma_db, mounts static/, defines endpoints
+    llm.py                 Mistral API wrapper (system prompt, context
+                            formatting, chat-completions call) — used by
+                            app.py's /api/chat, no pipeline logic here
     static/
-      index.html            default: query box only
-      query.js               landing-page logic (calls /api/query, no playground)
+      index.html            default homepage: interactive chat (V2)
+      chat.js                 chat-page logic (calls /api/chat, keeps
+                               in-memory history)
+      search.html            query-only page: chunk search, no LLM
+      search.js               search-page logic (calls /api/query)
       explore.html            full demo: 4 sections (Chunking, Embedding, Storage, Query)
       explore.js               pipeline-demo logic, incl. playground-text comparison
-      common.js               shared helpers used by both pages (el, postJSON,
-                               showError, renderResultGroup) — load before the
-                               page-specific script
-      style.css               shared by both pages
+      corpus.html             lists every indexed doc
+      corpus.js                corpus-list logic (calls /api/corpus)
+      document.html           full text of one doc
+      document.js              doc-view logic (calls /api/corpus/{source})
+      common.js               shared helpers used by every page (el, postJSON,
+                               showError, renderResultGroup, renderSources) —
+                               load before the page-specific script
+      style.css               shared by all pages
 ```
 
 `Dockerfile` and Space `README.md` frontmatter are deployment-phase files,

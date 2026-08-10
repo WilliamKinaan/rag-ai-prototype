@@ -3,39 +3,52 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>RAG Search</title>
+  <title>RAG Chat</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <div class="disclaimer">
     ⚠️ <strong>Testing prototype — not legal advice.</strong> This is a demo of
-    search technology only. Its sample documents are simplified, illustrative
-    summaries that may be incomplete or inaccurate, and results must never be
-    used as a substitute for advice from a qualified lawyer. Do not rely on
-    anything from this page for any real decision.
+    retrieval-augmented generation. Its sample documents are simplified,
+    illustrative summaries that may be incomplete or inaccurate, and the
+    model's answers must never be used as a substitute for advice from a
+    qualified lawyer. Do not rely on anything from this page for any real
+    decision.
   </div>
 
   <header>
-    <h1>RAG Search</h1>
-    <p class="subtitle">Ask a question, get the most relevant chunks from the sample corpus.</p>
+    <h1>RAG Chat</h1>
+    <p class="subtitle">
+      Ask a question. Relevant chunks are retrieved from the sample corpus
+      and given to Mistral (<code>ministral-8b-latest</code>) to answer from.
+    </p>
   </header>
 
   <main>
-    <section id="query" class="step">
-      <input id="query-input" type="text" placeholder="e.g. Do I need a notary to set up my company?" />
+    <section id="chat" class="step">
+      <div class="chat-toolbar">
+        <button id="new-chat-btn" class="btn-secondary" type="button">+ New chat</button>
+      </div>
+      <div id="chat-log" class="chat-log"></div>
       <div class="threshold-row">
         <label for="max-distance">Max distance (hide weaker matches):</label>
-        <input id="max-distance" type="number" min="0" max="2" step="0.01" value="0.5" />
+        <input id="max-distance" type="number" min="0" max="2" step="0.01" value="0.6" />
       </div>
-      <button id="query-btn">Search</button>
-      <div id="query-output" class="output"></div>
+      <div class="chat-input-row">
+        <input id="chat-input" type="text" placeholder="e.g. Do I need a notary to set up my company?" />
+        <button id="chat-btn">Send</button>
+      </div>
+      <div id="chat-error"></div>
     </section>
 
-    <p class="explore-link"><a href="/corpus.html">View the corpus used →</a></p>
-    <p class="explore-link"><a href="/explore.html">Curious how this works? Explore the pipeline step by step →</a></p>
+    <nav class="chat-nav">
+      <a href="/search.html">Chunk search only (no LLM) →</a>
+      <a href="/explore.html">Explore the pipeline step by step →</a>
+      <a href="/corpus.html">View the corpus used →</a>
+    </nav>
   </main>
 
   <script src="/common.js"></script>
-  <script src="/query.js"></script>
+  <script src="/chat.js"></script>
 </body>
 </html>

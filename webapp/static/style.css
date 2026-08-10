@@ -198,3 +198,122 @@ button:not(:disabled):hover { filter: brightness(1.1); }
   font-size: 0.92rem;
   line-height: 1.6;
 }
+
+/* --- Chat page --- */
+
+.chat-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.btn-secondary {
+  margin-top: 0;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  filter: none;
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 200px;
+  max-height: 60vh;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.chat-msg {
+  max-width: 80%;
+  padding: 0.65rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.chat-msg.user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.chat-msg.assistant {
+  align-self: flex-start;
+  background: #0d0f14;
+  border: 1px solid var(--border);
+}
+
+.chat-msg.assistant.no-context { color: var(--muted); font-style: italic; }
+
+.chat-msg.pending { color: var(--muted); font-style: italic; }
+
+.sources {
+  align-self: flex-start;
+  max-width: 80%;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.sources-label { margin-right: 0.2rem; }
+
+.source-tag {
+  display: inline-block;
+  background: #1e222b;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05rem 0.4rem;
+  margin: 0.1rem 0;
+  cursor: help;
+}
+
+.source-tag:hover,
+.source-tag:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* Follows the cursor over a .source-tag — see renderSources() in
+   common.js. Fixed positioning so it's never clipped by .chat-log's
+   overflow-y: auto. */
+.source-tooltip {
+  position: fixed;
+  z-index: 1000;
+  max-width: 360px;
+  background: #0d0f14;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.08s ease;
+}
+
+.source-tooltip.visible { opacity: 1; }
+
+.chat-input-row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.chat-input-row input[type="text"] { flex: 1; }
+.chat-input-row button { margin-top: 0; flex: none; }
+
+.chat-nav {
+  display: flex;
+  gap: 1.25rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}

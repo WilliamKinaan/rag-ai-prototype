@@ -12,6 +12,7 @@ from pathlib import Path
 WEBAPP_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = WEBAPP_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
+sys.path.insert(0, str(WEBAPP_DIR))  # so `import llm` (webapp/llm.py) resolves
 
 import chromadb  # noqa: E402
 import numpy as np  # noqa: E402
@@ -27,12 +28,14 @@ from ingest import get_collection  # noqa: E402
 from loader import load_documents  # noqa: E402
 from query import search  # noqa: E402
 
+import llm  # noqa: E402
+
 app = FastAPI(title="RAG Prototype Demo")
 
 # Default cosine-distance cutoff for the "hide weak matches" filter. Kept
 # here as the single source of truth; the frontend's default input value
 # (query.js / explore.js) is hardcoded to match — see comments there.
-DEFAULT_MAX_DISTANCE = 0.5
+DEFAULT_MAX_DISTANCE = 0.6
 
 # Populated at startup; holds the live Chroma collection + a couple of
 # stats that aren't cheap to recompute on every /api/index-stats call.
@@ -89,6 +92,18 @@ class QueryRequest(BaseModel):
     query: str
     k: int = TOP_K
     playground_texts: list[str] = []
+    max_distance: float = DEFAULT_MAX_DISTANCE
+
+
+class ChatTurn(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list[ChatTurn] = []
+    k: int = TOP_K
     max_distance: float = DEFAULT_MAX_DISTANCE
 
 
@@ -152,6 +167,39 @@ def api_query(req: QueryRequest):
         "corpus_results": corpus_results,
         "playground_results": playground_results,
     }
+
+
+@app.post("/api/chat")
+def api_chat(req: ChatRequest):
+    collection = state["collection"]
+
+    # Retrieval query: fold in the last user turn for follow-ups ("what
+    # about in the Netherlands?") so a short, pronoun-dependent message
+    # still embeds close to the right chunks. The LLM still sees `message`
+    # unmodified below — this concatenation is for retrieval only.
+    last_user_turn = next(
+        (t.content for t in reversed(req.history) if t.role == "user"), None
+    )
+    retrieval_query = f"{last_user_turn} {req.message}" if last_user_turn else req.message
+
+    query_vec = embed([retrieval_query], is_query=True)[0]
+    results = search(collection, query_vec, req.k)
+    results = [r for r in results if r["distance"] <= req.max_distance]
+
+    if not results:
+        return {"reply": llm.NO_CONTEXT_REPLY, "sources": [], "no_context": True}
+
+    context_block = llm.build_context_block(results)
+    history = [{"role": t.role, "content": t.content} for t in req.history]
+    try:
+        reply = llm.call_mistral(history, req.message, context_block)
+    except RuntimeError as e:
+        # Missing key is a local config problem (500); anything else is the
+        # Mistral API itself failing (502 — this server, talking upstream).
+        status = 500 if "MISTRAL_API_KEY" in str(e) else 502
+        raise HTTPException(status_code=status, detail=str(e))
+
+    return {"reply": reply, "sources": results, "no_context": False}
 
 
 def _doc_title(text: str) -> str:

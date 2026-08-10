@@ -52,8 +52,9 @@ Learn how RAG works by building it from scratch (no LangChain/LlamaIndex),
 in stages:
 - **V1 (done):** semantic search only — ingest, chunk, embed, store,
   retrieve. No LLM.
-- **V2 (not started):** wrap `retrieve()` with a local, open Mistral model
-  to generate answers grounded in retrieved chunks.
+- **V2 (in progress):** wrap `retrieve()` with a generation layer to
+  produce grounded answers. See below — the local-model assumption was
+  superseded.
 - **Later:** turn the chatbot into an agent.
 
 ## Status: V1 complete and verified
@@ -102,9 +103,12 @@ installing only from `requirements.txt` (not just patched by hand in the
 working venv) — see `rag-env/`. First run downloads ~2GB of model weights;
 expect seconds-per-batch encoding, not instant, since there's no GPU.
 
-Also relevant for V2: "Mistral locally" on this hardware means a
-llama.cpp/Ollama quantized path, not the `transformers` library — not
-designed yet, just noted so it isn't planned around a GPU assumption.
+**Superseded:** this used to say V2 would run Mistral locally via
+llama.cpp/Ollama, since this box is CPU-only. Decision reversed — V2
+instead calls the **hosted Mistral AI API** (`ministral-8b-latest`,
+free tier via console.mistral.ai), which needs no local model weights
+and no GPU. See `CONTEXT-webapp.md`'s "V2 interactive chat" section for
+the implementation.
 
 ## Project layout
 
@@ -154,10 +158,13 @@ python src/query.py --eval    # should print hit@1: 6/10  hit@3: 10/10
   a space in the output chunk. Harmless for retrieval, just not exact
   whitespace round-tripping. Documented in the module docstring.
 
-## Next step (V2, not started)
+## V2 status: interactive chat built (2026-08-10)
 
-Design and build the generation layer: wrap `retrieve(query, k)` from
-`src/query.py` with a locally-run Mistral model (open weights, via
-llama.cpp or Ollama given the CPU-only hardware) to produce a grounded
-answer from the retrieved chunks. Nothing about this has been designed
-yet — deliberately deferred per the V1 plan.
+Generation layer added: `webapp/llm.py` + `POST /api/chat` (see
+`CONTEXT-webapp.md`'s "V2 interactive chat" section for the full
+design). Reuses `search()`/`embed()` from `src/query.py` unchanged —
+`retrieve(query, k)` itself wasn't touched, only wrapped. Not yet
+user-verified end-to-end with a real `MISTRAL_API_KEY` (needs the
+user's own free-tier key from console.mistral.ai) — the retrieval
+path, no-context short-circuit, and missing-key error path were all
+smoke-tested locally without one.
