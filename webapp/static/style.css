@@ -175,6 +175,27 @@ button:not(:disabled):hover { filter: brightness(1.1); }
   flex: none;
 }
 
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.72rem;
+  cursor: help;
+  user-select: none;
+}
+
+.help-icon:hover,
+.help-icon:focus {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+
 .corpus-list {
   display: flex;
   flex-direction: column;

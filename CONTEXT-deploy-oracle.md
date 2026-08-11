@@ -96,7 +96,14 @@ recreated at a different path.
 
 ## Redeploying after a code change
 
-No CI/CD — pushing to `main` does **not** auto-deploy. To ship a change:
+No CI/CD — pushing to `main` does **not** auto-deploy, and that's
+deliberate, not just an unfinished feature: **always confirm with the user
+before running `deploy-oracle.sh` (or otherwise SSHing in to restart the
+live service)**, even when a change is already committed and pushed.
+Committing/pushing to GitHub is fine to do without asking; deploying the
+live instance is a separate, explicitly-confirmed step every time.
+
+To ship a change once confirmed:
 
 ```bash
 # on your Mac: commit + push as normal
