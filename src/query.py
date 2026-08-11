@@ -9,6 +9,7 @@ Usage:
 import argparse
 import json
 
+import sqlite_shim  # noqa: F401  (must precede `import chromadb` — see module docstring)
 import chromadb
 from chromadb.errors import NotFoundError
 

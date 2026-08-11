@@ -14,6 +14,7 @@ PROJECT_ROOT = WEBAPP_DIR.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 sys.path.insert(0, str(WEBAPP_DIR))  # so `import llm` (webapp/llm.py) resolves
 
+import sqlite_shim  # noqa: E402,F401  (must precede `import chromadb` — see module docstring)
 import chromadb  # noqa: E402
 import numpy as np  # noqa: E402
 from fastapi import FastAPI, HTTPException  # noqa: E402

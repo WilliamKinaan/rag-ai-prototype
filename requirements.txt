@@ -1,4 +1,9 @@
 chromadb==1.5.9
+# Some Linux distros (RHEL-family — Oracle Linux 9, e.g.) ship a system
+# sqlite3 older than the 3.35.0 Chroma requires; this swaps in a modern
+# build at import time (see src/sqlite_shim.py). Marker keeps it off macOS,
+# where the system sqlite3 is already new enough and this is never needed.
+pysqlite3-binary>=0.5.0; sys_platform == "linux"
 # Pinned below torch's ceiling on this platform (Intel Mac / macOS x86_64,
 # Python 3.12): torch only ships up to 2.2.2 here, and transformers>=4.5x
 # hard-requires torch>=2.4, which breaks the import chain. sentence-transformers
