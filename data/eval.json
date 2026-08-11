@@ -1,73 +1,23 @@
 [
   {
-    "query": "Can my employer dismiss me first and let me challenge it afterward in court, rather than needing a judge's approval beforehand?",
-    "expected_source": "france_employment_law.md",
-    "note": "jurisdiction discrimination: FR is dismiss-first/contest-after, no country name in query"
-  },
-  {
-    "query": "Before my employer can end my contract, do they need permission from a court or government agency first?",
-    "expected_source": "netherlands_employment_law.md",
-    "note": "jurisdiction discrimination: NL requires prior UWV/kantonrechter approval, no country name in query"
-  },
-  {
-    "query": "Is there a specialized commission that can rule on whether my rent is too high, separate from the regular courts?",
-    "expected_source": "netherlands_tenant_law.md",
-    "note": "jurisdiction discrimination: NL huurcommissie, no country name in query"
-  },
-  {
-    "query": "Is there a rule that stops landlords from evicting tenants during the winter, even with a court order?",
-    "expected_source": "france_tenant_law.md",
-    "note": "jurisdiction discrimination: FR trêve hivernale, no country name in query"
-  },
-  {
-    "query": "Do I need to go through a notary to legally set up my company, or can the founders just sign the paperwork themselves?",
-    "expected_source": "netherlands_company_formation.md",
-    "note": "jurisdiction discrimination: NL notarial deed is mandatory, no country name in query"
-  },
-  {
-    "query": "Which court-affiliated registry handles new company registration paperwork?",
-    "expected_source": "france_company_formation.md",
-    "note": "jurisdiction discrimination: FR's RCS filing is via the commercial court registry, unlike NL's KVK; no country name in query"
-  },
-  {
-    "query": "What types of employment agreements exist under French law — permanent versus temporary?",
-    "expected_source": "france_employment_law.md",
-    "note": "paraphrase of CDI/CDD without using those terms"
-  },
-  {
-    "query": "How well protected are renters from being kicked out by their landlord?",
-    "expected_source": "netherlands_tenant_law.md",
-    "note": "paraphrase of huurbescherming"
-  },
-  {
-    "query": "Which chamber-of-commerce-style trade register do new companies need to sign up with?",
-    "expected_source": "netherlands_company_formation.md",
-    "note": "paraphrase of KVK (Kamer van Koophandel = Chamber of Commerce)"
-  },
-  {
-    "query": "What happens to my security deposit after I move out of a rented apartment?",
-    "expected_source": "france_tenant_law.md",
-    "note": "genuinely ambiguous on purpose: both FR and NL docs discuss deposit return; FR's is a bit more detailed on timing, but a miss here is informative, not a bug"
-  },
-  {
     "query": "Before an employee can sue over an unfair dismissal, must they first go through a government ministry that tries to resolve it, only sending it to a special court if that fails?",
     "expected_source": "uae_employment_law.md",
-    "note": "jurisdiction discrimination: UAE's MOHRE-first conciliation before referral to the Labour Court, vs FR's direct court challenge and NL's prior court/UWV approval; no country name in query"
+    "note": "MOHRE-first conciliation before referral to the Labour Court, distinct from most other jurisdictions' direct-to-court dismissal challenges"
   },
   {
     "query": "Which system does a lease need to be registered in before the authorities will even recognize the contract, for example to set up a utility connection?",
     "expected_source": "uae_tenant_law.md",
-    "note": "jurisdiction discrimination: UAE's Ejari registration requirement, distinct from FR/NL tenancy docs which have no equivalent mandatory registry; no country name in query"
+    "note": "UAE's Ejari registration requirement"
   },
   {
     "query": "Are there still specific industries where a foreign investor needs a local national partner, even though most sectors now allow full foreign ownership of a company?",
     "expected_source": "uae_company_formation.md",
-    "note": "UAE's Cabinet-designated 'strategic impact' sectors carve-out from the 100% foreign ownership reform; no FR/NL equivalent in the corpus"
+    "note": "UAE's Cabinet-designated 'strategic impact' sectors carve-out from the 100% foreign ownership reform"
   },
   {
     "query": "Which law governs how companies must handle people's personal data, and does it apply the same way inside special financial zones?",
     "expected_source": "uae_data_protection_law.md",
-    "note": "paraphrase of PDPL scope/exclusion for DIFC/ADGM; new UAE-only topic, no equivalent doc in the corpus"
+    "note": "paraphrase of PDPL scope/exclusion for DIFC/ADGM"
   },
   {
     "query": "What's the practical difference between licensing a new business through a mainland economic department versus through an independent free zone authority?",
@@ -77,7 +27,7 @@
   {
     "query": "How can a non-Muslim foreigner make sure their home country's inheritance rules apply to their estate instead of the local default?",
     "expected_source": "uae_inheritance_wills_expats.md",
-    "note": "paraphrase of DIFC Wills Service / electing home-country succession law; new UAE-only topic, no equivalent doc in the corpus"
+    "note": "paraphrase of DIFC Wills Service / electing home-country succession law"
   },
   {
     "query": "What's the lightest category of criminal offence, and how short can the punishment for it be?",
@@ -173,5 +123,95 @@
     "query": "How is my payment for an unbuilt apartment protected if the developer runs into financial trouble before finishing it?",
     "expected_source": "uae_real_estate_escrow_law.md",
     "note": "paraphrase of ring-fenced escrow accounts for off-plan real estate payments"
+  },
+  {
+    "query": "How does the government make sure my employer actually pays my salary on time?",
+    "expected_source": "uae_wage_protection_system.md",
+    "note": "paraphrase of the WPS electronic salary-transfer monitoring requirement"
+  },
+  {
+    "query": "If I lose my job through no fault of my own, is there a mandatory insurance that pays me some income for a few months?",
+    "expected_source": "uae_unemployment_insurance_iloe.md",
+    "note": "paraphrase of the ILOE scheme"
+  },
+  {
+    "query": "Do private companies have to hire a certain percentage of local nationals, and what happens if they don't?",
+    "expected_source": "uae_emiratisation_quotas.md",
+    "note": "paraphrase of Emiratisation quotas / Nafis non-compliance contributions"
+  },
+  {
+    "query": "Can a Muslim leave their entire estate to just one person in their will, or are there fixed shares reserved for family members?",
+    "expected_source": "uae_sharia_inheritance_muslims.md",
+    "note": "paraphrase of Fara'id fixed shares and the one-third bequest limit; genuinely close to uae_inheritance_wills_expats.md by design (same broad topic, different track), a miss there is informative"
+  },
+  {
+    "query": "After a divorce, does the day-to-day care of the children automatically go to the mother?",
+    "expected_source": "uae_child_custody_law.md",
+    "note": "paraphrase of custody vs guardianship split"
+  },
+  {
+    "query": "Which authority licenses and regulates insurance brokers?",
+    "expected_source": "uae_insurance_law.md",
+    "note": "paraphrase of CBUAE licensing insurance brokers; genuinely close to uae_banking_law.md by design (same consolidated 2025 law), a miss there is informative"
+  },
+  {
+    "query": "Which authority is responsible for maintaining the stability of the national currency and licensing banks?",
+    "expected_source": "uae_banking_law.md",
+    "note": "paraphrase of the Central Bank's core mandate"
+  },
+  {
+    "query": "Can an unfinished ship still under construction be registered?",
+    "expected_source": "uae_maritime_law.md",
+    "note": "paraphrase of registering vessels under construction under the new Maritime Law"
+  },
+  {
+    "query": "Does a social media influencer need a license to post sponsored content?",
+    "expected_source": "uae_media_law.md",
+    "note": "paraphrase of influencers being a licensable media activity under Media Regulation"
+  },
+  {
+    "query": "Can a company be fined for releasing greenhouse gases without following the required reporting rules?",
+    "expected_source": "uae_climate_environmental_law.md",
+    "note": "paraphrase of Climate Change Law penalties, including free-zone entities"
+  },
+  {
+    "query": "Is a signature made electronically as legally binding as one made with pen and paper?",
+    "expected_source": "uae_electronic_transactions_law.md",
+    "note": "paraphrase of electronic signature validity under the Electronic Transactions and Trust Services Law"
+  },
+  {
+    "query": "Who decides whether a doctor's mistake during treatment counts as a legally recognized medical error?",
+    "expected_source": "uae_medical_liability_law.md",
+    "note": "paraphrase of the structured review process under the Medical Liability Law"
+  },
+  {
+    "query": "Is it a criminal offence to publicly insult someone's religion online?",
+    "expected_source": "uae_anti_discrimination_law.md",
+    "note": "paraphrase of religious-insult/hate-speech offences under the anti-discrimination framework"
+  },
+  {
+    "query": "Can a property be sold without the bank's consent while a home loan against it is still outstanding?",
+    "expected_source": "uae_mortgage_law_dubai.md",
+    "note": "paraphrase of the mortgage-as-encumbrance effect under Dubai's mortgage law"
+  },
+  {
+    "query": "Is there a part of Dubai where commercial disputes are heard in English under a common-law system instead of the local civil courts?",
+    "expected_source": "uae_difc_overview.md",
+    "note": "paraphrase of the DIFC's independent common-law courts"
+  },
+  {
+    "query": "Which Abu Dhabi zone runs its own courts modeled on English law, separate from the rest of the emirate's legal system?",
+    "expected_source": "uae_adgm_overview.md",
+    "note": "paraphrase of ADGM's independent common-law courts"
+  },
+  {
+    "query": "How is my purchase of an unbuilt apartment officially recorded before I get the final title deed?",
+    "expected_source": "uae_off_plan_property_registration_oqood.md",
+    "note": "paraphrase of Oqood interim registration; genuinely close to uae_real_estate_escrow_law.md by design (same off-plan-purchase topic, different protection mechanism), a miss there is informative"
+  },
+  {
+    "query": "How many hours of overtime can I be asked to work, and how much extra should I be paid for it?",
+    "expected_source": "uae_labour_working_hours_leave.md",
+    "note": "paraphrase of the 2-hour overtime cap and 125%/150% premium rates"
   }
 ]

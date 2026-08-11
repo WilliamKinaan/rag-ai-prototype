@@ -136,6 +136,65 @@ from before — the corpus growth didn't regress anything. Left as-is per
 the same standing guidance: don't reword queries just to inflate the
 score.
 
+## Corpus goes UAE-only (2026-08-11): France/Netherlands removed, 18 more UAE topics
+
+User asked to remove the France/Netherlands docs entirely (they'd been
+kept as a retrieval-comparison baseline through the two UAE expansions
+above) and add "much more" UAE data — the corpus is now **UAE-only**,
+43 docs. Both changes landed together:
+
+- **Removed:** all 6 `france_*.md`/`netherlands_*.md` docs and every
+  `data/eval.json` entry that referenced them (the jurisdiction-
+  discrimination query design doesn't apply once there's only one
+  jurisdiction — the two surviving queries whose notes had compared UAE
+  to FR/NL had their notes reworded, expected_source unchanged).
+- **Added 18 more UAE docs**, same sourced-and-cited style as before,
+  filling gaps the first 25 didn't cover: `uae_wage_protection_system.md`,
+  `uae_unemployment_insurance_iloe.md` (Federal Decree-Law No. 13/2022),
+  `uae_emiratisation_quotas.md`, `uae_sharia_inheritance_muslims.md`
+  (Federal Decree-Law No. 41/2024 — the *Muslim* personal status law;
+  note this is a **different** No. 41 law than the 2022 civil/non-Muslim
+  one `uae_inheritance_wills_expats.md` already covered — same number,
+  different year, easy to conflate), `uae_child_custody_law.md`,
+  `uae_insurance_law.md` and `uae_banking_law.md` (originally Federal
+  Decree-Law No. 48/2023 and No. 14/2018 respectively, both now
+  consolidated under Federal Decree-Law No. 6/2025 — cross-referenced as
+  companion docs since they're the same current law's two halves),
+  `uae_maritime_law.md` (No. 43/2023), `uae_media_law.md` (No. 55/2023),
+  `uae_climate_environmental_law.md` (No. 11/2024),
+  `uae_electronic_transactions_law.md` (No. 46/2021),
+  `uae_medical_liability_law.md` (No. 4/2016), `uae_anti_discrimination_law.md`
+  (current law is No. 34/2023, superseding the older 2015/2019 one — flagged
+  in the doc itself since this area of UAE law has moved unusually fast),
+  `uae_mortgage_law_dubai.md` (Dubai Law No. 14/2008),
+  `uae_difc_overview.md` and `uae_adgm_overview.md` (the two common-law
+  financial free zones, previously only mentioned in passing by other
+  docs), `uae_off_plan_property_registration_oqood.md` (Dubai Law No.
+  13/2008 — deliberately close in topic to `uae_real_estate_escrow_law.md`,
+  same off-plan purchase but a different protection mechanism), and
+  `uae_labour_working_hours_leave.md` (working hours/overtime/leave
+  detail, complementing the original `uae_employment_law.md`). All
+  sourced live via WebSearch this session, not recalled from memory.
+
+`data/eval.json`: 35 → 43 queries (10 FR/NL entries removed, 18 new
+plain-paraphrase queries added, 2 notes reworded as above).
+
+**Current result (43 queries, 43 docs / 118 chunks): hit@1 38/43, hit@3
+43/43.** All 5 misses are informative close calls between genuinely
+adjacent UAE topics (e.g. the Ejari-registration query landing on
+`uae_off_plan_property_registration_oqood.md` — both are "which system
+registers this contract" scenarios; the AML query still lands on
+`uae_bounced_cheque_law.md` first, same pattern as the prior expansion) —
+none are regressions, and 3 of the 5 misses were deliberately designed as
+close-call pairs in the query notes rather than accidents. Not tuned
+toward 10/10 for the same standing reason as before.
+
+**Not yet done as of this note:** the live Oracle deployment still has
+the old FR/NL corpus and old CSS — this corpus change and the earlier
+light-theme CSS change are committed and pushed to `main` but **not
+deployed**, per the user's standing instruction to always confirm before
+running `deploy-oracle.sh` (see `CONTEXT-deploy-oracle.md`).
+
 ## Goal
 
 Learn how RAG works by building it from scratch (no LangChain/LlamaIndex),
@@ -150,8 +209,8 @@ in stages:
 ## Status: V1 complete and verified
 
 Ingestion + retrieval pipeline works end-to-end. Current eval harness
-score (legal corpus incl. UAE expansion, see notes above): **hit@1:
-28/35, hit@3: 35/35**.
+score (UAE-only legal corpus, see notes above): **hit@1: 38/43, hit@3:
+43/43**.
 
 ## Decisions locked in (V1)
 
@@ -203,24 +262,27 @@ the implementation.
 
 ## Project layout
 
-```
-data/raw/          31 sample docs (English, legal-law theme — see pivot
-                    and UAE-expansion notes above): 3 topics × {france,
-                    netherlands} (employment, tenant, company_formation)
-                    + 25 UAE docs spanning employment, tenancy, company
-                    formation, data protection, free zone vs mainland,
-                    inheritance/wills, criminal law, cybercrime, traffic,
-                    consumer protection, VAT, corporate tax, marriage/
-                    divorce, real estate (foreign ownership + escrow),
-                    bounced cheques, AML, trademarks, copyright, patents,
-                    bankruptcy, arbitration, golden visa/immigration,
-                    domestic workers, and the court system — see the
-                    UAE-corpus-broadening note above for the full list
-                    and sources
-data/eval.json      35 hand-built (query, expected_source) pairs: 9
-                    jurisdiction-discrimination scenarios (no country name
-                    in the query) + 26 plain paraphrases, designed backwards
-                    from the corpus per topic
+data/raw/          43 sample docs, UAE-only (English — see the corpus-pivot
+                    and UAE-expansion notes above for how it got here and
+                    the France/Netherlands docs it replaced): employment,
+                    tenancy, company formation, data protection, free zone
+                    vs mainland, inheritance/wills (non-Muslim + Sharia),
+                    criminal law, cybercrime, traffic, consumer protection,
+                    VAT, corporate tax, marriage/divorce, child custody,
+                    real estate (foreign ownership, escrow, off-plan/Oqood,
+                    mortgages), bounced cheques, AML, trademarks, copyright,
+                    patents, bankruptcy, arbitration, golden visa/immigration,
+                    domestic workers, working hours/leave, wage protection,
+                    unemployment insurance, Emiratisation, insurance,
+                    banking, maritime, media, climate, e-transactions,
+                    medical liability, anti-discrimination, DIFC, ADGM, and
+                    the court system — see the corpus-pivot note above for
+                    the full list and sources
+data/eval.json      43 hand-built (query, expected_source) pairs, all
+                    plain-paraphrase queries designed backwards from the
+                    corpus per topic (see corpus-pivot note for why the
+                    earlier jurisdiction-discrimination query design was
+                    dropped along with the FR/NL docs)
 src/config.py       all tunables (paths, model name, chunk size/overlap, k)
 src/embedding.py     embed(texts, is_query=False) — shared by ingest+query
 src/chunking.py      paragraph-pack chunker + word-boundary fallback
@@ -238,20 +300,19 @@ rag-env/            python venv (gitignored)
 ```bash
 source rag-env/bin/activate
 python src/ingest.py          # builds chroma_db/ if missing
-python src/query.py --eval    # should print hit@1: 28/35  hit@3: 35/35
+python src/query.py --eval    # should print hit@1: 38/43  hit@3: 43/43
 ```
 
 ## Known caveats / non-blocking notes
 
 - The eval set is a smoke test, not a statistically meaningful benchmark.
-  With 80 chunks (as of the broader UAE expansion) it's a more
-  meaningful signal than the original 13-chunk version, but still hand-
-  built and backwards-designed from the corpus rather than an independent
-  benchmark.
-- The 7 current eval misses are expected/documented (see pivot and
-  UAE-expansion notes above) — don't "fix" them by rewording the queries;
-  if hit@1 changes on a future run, check whether the corpus or config
-  changed first.
+  With 118 chunks (as of the UAE-only pivot) it's a more meaningful signal
+  than the original 13-chunk version, but still hand-built and
+  backwards-designed from the corpus rather than an independent benchmark.
+- The 5 current eval misses are expected/documented (see the corpus-pivot
+  note above) — don't "fix" them by rewording the queries; if hit@1
+  changes on a future run, check whether the corpus or config changed
+  first.
 - `_split_by_words` (the long-paragraph fallback in `chunking.py`) rejoins
   words with a single space, so if it ever fires on text that still
   contains a `\n\n` paragraph separator, that separator gets flattened to
