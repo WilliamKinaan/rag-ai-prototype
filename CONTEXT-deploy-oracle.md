@@ -94,6 +94,27 @@ system executables carry), which `init_t` is allowed to exec. Needs
 re-running (or scripting into a setup script) if the venv is ever
 recreated at a different path.
 
+## Redeploying after a code change
+
+No CI/CD — pushing to `main` does **not** auto-deploy. To ship a change:
+
+```bash
+# on your Mac: commit + push as normal
+git add -A && git commit -m "..." && git push origin main
+
+# on the server:
+ssh -i ~/.ssh/oracle_rag_prototype opc@134.98.154.12
+~/rag-prototype/deploy-oracle.sh
+```
+
+`deploy-oracle.sh` (repo root) does `git pull` → `pip install` (deps,
+always run — cheap no-op if nothing changed) → clears `__pycache__` →
+`systemctl restart` → polls `/api/index-stats` until healthy (or times out
+and dumps the last 40 log lines). Since a plain `git pull` also picks up
+any new/edited files under `data/raw/`, and the app rebuilds its index
+from `data/raw/` on every startup, editing the corpus needs no separate
+ingest step — just push, pull, restart.
+
 ## Running as a service
 
 `systemd` unit at `/etc/systemd/system/rag-prototype.service` (server-only
