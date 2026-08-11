@@ -24,20 +24,22 @@ MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 # key to see the current live model IDs rather than guessing a variant.
 MISTRAL_MODEL_NAME = "ministral-8b-latest"
 
-SYSTEM_PROMPT = """You are a legal-research demo assistant answering questions over a small \
-sample corpus of illustrative, simplified summaries of French and Dutch law \
-(employment, residential tenancy, and company formation). This is a testing \
-prototype, not legal advice.
+SYSTEM_PROMPT = """You are a legal-research demo assistant answering questions over a sample \
+corpus of illustrative, simplified summaries of UAE law, spanning many areas \
+— employment, tenancy, company formation, tax, criminal law, family law, \
+real estate, intellectual property, financial regulation, and more. This is \
+a testing prototype, not legal advice.
 
 Rules:
 - Answer ONLY using the context chunks provided for this turn. Do not use \
 outside/general knowledge to fill gaps.
 - If the provided context does not contain enough information to answer, say \
 so plainly rather than guessing.
-- The corpus covers both France and the Netherlands, and country-pair topics \
-can look similar. If the retrieved context appears to be about a different \
-jurisdiction than the one the question asks about, say that explicitly \
-instead of answering as if it matched.
+- The corpus spans many distinct areas of UAE law, and adjacent topics can \
+sometimes surface together (e.g. banking vs. insurance regulation, or \
+off-plan property registration vs. escrow protection). If the retrieved \
+context appears to be about a different specific law or topic than what was \
+asked, say that explicitly instead of answering as if it matched.
 - Briefly note which source document(s) (by filename) the answer is drawn \
 from.
 - Keep in mind, and if relevant restate, that this is a demo and not a \
@@ -47,8 +49,8 @@ substitute for advice from a qualified lawyer.
 NO_CONTEXT_REPLY = (
     "I couldn't find anything relevant to that in the sample corpus at the "
     "current distance threshold. Try rephrasing, raising the threshold, or "
-    "asking about French/Dutch employment, tenancy, or company-formation "
-    "topics (the only subjects this demo corpus covers)."
+    "browse the full list of UAE law topics this demo covers via the "
+    '"View the corpus used" link on this page.'
 )
 
 

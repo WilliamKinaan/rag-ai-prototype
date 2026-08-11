@@ -4,8 +4,8 @@ _Illustrative simplified summary for a search demo — not legal advice._
 _Originally enacted as Federal Decree-Law No. 48 of 2023 Regulating
 Insurance Activities; now consolidated into Federal Decree-Law No. 6 of
 2025 Regarding the Central Bank, Regulation of Financial Institutions
-and Activities, and Insurance Business — see the companion
-[[uae_banking_law]] doc for the same law's banking side. Sourced from
+and Activities, and Insurance Business — see the companion doc on UAE
+banking regulation for the same law's banking side. Sourced from
 the Central Bank of the UAE (CBUAE) Rulebook and reputable legal-industry
 summaries._
 

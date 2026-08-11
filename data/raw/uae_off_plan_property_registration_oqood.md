@@ -3,8 +3,9 @@
 _Illustrative simplified summary for a search demo — not legal advice._
 _Sourced from Dubai Law No. 13 of 2008 (Off-Plan Registration Law) and
 Executive Council Resolution No. 6 of 2010, Dubai Land Department (DLD)
-official materials. Complements [[uae_real_estate_escrow_law]], which
-covers how buyer payments themselves are protected during construction._
+official materials. Complements the companion doc on real-estate escrow
+protection, which covers how buyer payments themselves are protected
+during construction._
 
 Buying a property that doesn't exist yet creates an obvious problem —
 what actually proves a buyer's claim to a specific unit before there's a

@@ -2,8 +2,9 @@
 
 _Illustrative simplified summary for a search demo — not legal advice._
 _Sourced from Federal Decree-Law No. 33 of 2021 and its executive
-regulations, MOHRE official materials. Complements [[uae_employment_law]],
-which covers contract types, probation, and termination._
+regulations, MOHRE official materials. Complements the companion doc on
+UAE employment law, which covers contract types, probation, and
+termination._
 
 Standard working hours under the federal Labour Law are capped at 8
 hours a day or 48 hours a week, with a specific, legally mandated

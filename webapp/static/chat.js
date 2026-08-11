@@ -14,7 +14,15 @@ function addMessage(role, text, { noContext = false, pending = false } = {}) {
   const classes = ["chat-msg", role];
   if (noContext) classes.push("no-context");
   if (pending) classes.push("pending");
-  const msg = el("div", classes.join(" "), text);
+  const msg = el("div", classes.join(" "));
+  // Assistant replies are Markdown from the model (bold/italic/lists) and
+  // get rendered as such; the user's own typed message and the "thinking…"
+  // placeholder are plain text, shown as-is.
+  if (role === "assistant" && !pending) {
+    msg.innerHTML = renderMarkdown(text);
+  } else {
+    msg.textContent = text;
+  }
   log.appendChild(msg);
   log.scrollTop = log.scrollHeight;
   return msg;

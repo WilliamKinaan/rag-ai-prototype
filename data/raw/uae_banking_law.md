@@ -4,8 +4,8 @@ _Illustrative simplified summary for a search demo — not legal advice._
 _Originally enacted as Federal Decree-Law No. 14 of 2018 Concerning the
 Central Bank and the Regulation of Financial Institutions and
 Activities; now consolidated into Federal Decree-Law No. 6 of 2025 —
-see the companion [[uae_insurance_law]] doc for the same law's insurance
-side. Sourced from the Central Bank of the UAE (CBUAE) Rulebook and
+see the companion doc on UAE insurance regulation for the same law's
+insurance side. Sourced from the Central Bank of the UAE (CBUAE) Rulebook and
 reputable legal-industry summaries._
 
 The Central Bank's governing law replaced a much older 1980 framework —

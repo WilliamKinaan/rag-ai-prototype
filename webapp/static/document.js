@@ -19,7 +19,7 @@
     $("doc-title").textContent = doc.title;
     $("doc-filename").textContent = doc.source;
     document.title = `${doc.title} — RAG Search`;
-    content.textContent = doc.text;
+    content.innerHTML = renderMarkdown(doc.text);
   } catch (err) {
     showError(content, err);
   }

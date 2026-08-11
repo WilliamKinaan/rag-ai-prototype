@@ -3,8 +3,9 @@
 _Illustrative simplified summary for a search demo — not legal advice._
 _Sourced from the Personal Status Law (Federal Decree-Law No. 41 of 2024,
 replacing Federal Law No. 28 of 2005) as summarized by reputable UAE
-legal-industry sources. Contrast with [[uae_inheritance_wills_expats]] —
-that doc covers the separate non-Muslim opt-out route via DIFC wills._
+legal-industry sources. Contrast with the companion doc on inheritance
+and wills for non-Muslim expats — that doc covers the separate
+non-Muslim opt-out route via DIFC wills._
 
 Unlike the civil, will-driven succession route available to non-Muslims
 (see the companion doc on DIFC wills), a Muslim's estate in the UAE is
