@@ -29,9 +29,9 @@ sudo systemctl restart rag-prototype
 
 echo "==> Waiting for it to come back up (model reload takes ~2 min on this box)..."
 for i in $(seq 1 30); do
-  if curl -sf --max-time 3 localhost:8000/api/index-stats >/dev/null 2>&1; then
+  if curl -sf --max-time 3 localhost/api/index-stats >/dev/null 2>&1; then
     echo "==> READY after $((i * 10))s"
-    curl -s localhost:8000/api/index-stats
+    curl -s localhost/api/index-stats
     echo
     exit 0
   fi

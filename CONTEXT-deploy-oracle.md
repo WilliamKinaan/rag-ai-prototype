@@ -1,8 +1,8 @@
 # Context: Deployment on Oracle Cloud Free Tier
 
 _Last updated: 2026-08-11_
-**Status: deployed and live.** `http://134.98.154.12:8000` — search, explore,
-corpus browser, and chat (Mistral-backed) all working end to end.
+**Status: deployed and live.** `http://134.98.154.12` (port 80) — search,
+explore, corpus browser, and chat (Mistral-backed) all working end to end.
 
 ## Why Oracle, not Hugging Face Spaces
 
@@ -138,13 +138,19 @@ User=opc
 WorkingDirectory=/home/opc/rag-prototype
 Environment="PATH=/home/opc/rag-prototype/rag-env/bin:/usr/bin:/bin"
 EnvironmentFile=-/home/opc/rag-prototype/.env
-ExecStart=/home/opc/rag-prototype/rag-env/bin/uvicorn webapp.app:app --host 0.0.0.0 --port 8000
+ExecStart=/home/opc/rag-prototype/rag-env/bin/uvicorn webapp.app:app --host 0.0.0.0 --port 80
+AmbientCapabilities=CAP_NET_BIND_SERVICE
 Restart=on-failure
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+Port 80 is privileged and the service runs as `User=opc` (not root), so
+`AmbientCapabilities=CAP_NET_BIND_SERVICE` is required — without it uvicorn
+fails to bind with a permission error. (Originally ran on port 8000, no
+capability needed; moved to 80 so the demo URL doesn't need a port suffix.)
 
 `EnvironmentFile=-/home/opc/rag-prototype/.env` is redundant with `llm.py`'s
 own `load_dotenv()` call but harmless (leading `-` makes it optional) —
@@ -170,17 +176,22 @@ sudo journalctl -u rag-prototype -f     # live logs
 
 ## Networking
 
-Two independent layers both had to be opened for port 8000 — missing
-either one means "connection refused" from outside despite the app
-running fine locally on the box:
+Two independent layers both have to be opened for whatever port the app
+binds — missing either one means "connection refused" from outside despite
+the app running fine locally on the box:
 - **OS firewall** (`firewalld`, active by default on OL9):
-  `sudo firewall-cmd --permanent --add-port=8000/tcp && sudo firewall-cmd --reload`
+  `sudo firewall-cmd --permanent --add-port=80/tcp && sudo firewall-cmd --reload`
 - **Cloud network** (Oracle Security List on the instance's VCN): an
   ingress rule added via the console — source `0.0.0.0/0`, TCP, destination
-  port `8000`.
+  port `80`.
+
+Moved from port 8000 to port 80 (2026-08-16) so the demo URL doesn't need
+a port suffix. The old `8000/tcp` firewalld rule and Security List ingress
+rule should be removed once port 80 is verified working (leave both open
+in parallel until then, to avoid a window where the demo is unreachable).
 
 No TLS/domain set up — the demo is plain HTTP on the raw public IP
-(`http://134.98.154.12:8000`), by explicit scope cut (no domain name
+(`http://134.98.154.12`), by explicit scope cut (no domain name
 available). Revisit if/when the client demo needs `https://`.
 
 ## Deploy-from-scratch steps (for rebuilding on a fresh instance)
@@ -209,7 +220,7 @@ chmod 600 ~/rag-prototype/.env
 sudo systemctl daemon-reload
 sudo systemctl enable --now rag-prototype
 
-sudo firewall-cmd --permanent --add-port=8000/tcp && sudo firewall-cmd --reload
+sudo firewall-cmd --permanent --add-port=80/tcp && sudo firewall-cmd --reload
 # + add the Security List ingress rule in the Oracle console (see above)
 ```
 
