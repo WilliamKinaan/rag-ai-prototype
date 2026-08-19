@@ -32,6 +32,24 @@ body {
 
 .disclaimer strong { color: #b02a2a; }
 
+/* Bottom-right (not top) so it never overlaps the .disclaimer banner,
+   which spans the full width at the very top of every page. */
+.rate-limit-badge {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(16, 24, 40, 0.08);
+  z-index: 900;
+}
+
 header {
   padding: 2rem 1.5rem 1rem;
   max-width: 900px;

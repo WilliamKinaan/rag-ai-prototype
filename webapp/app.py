@@ -17,7 +17,8 @@ sys.path.insert(0, str(WEBAPP_DIR))  # so `import llm` (webapp/llm.py) resolves
 import sqlite_shim  # noqa: E402,F401  (must precede `import chromadb` — see module docstring)
 import chromadb  # noqa: E402
 import numpy as np  # noqa: E402
-from fastapi import FastAPI, HTTPException  # noqa: E402
+from fastapi import FastAPI, HTTPException, Request  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
@@ -30,8 +31,49 @@ from loader import load_documents  # noqa: E402
 from query import search  # noqa: E402
 
 import llm  # noqa: E402
+import rate_limiter  # noqa: E402
 
 app = FastAPI(title="RAG Prototype Demo")
+
+
+@app.get("/api/rate-limit/status")
+def rate_limit_status():
+    """Read-only snapshot of the in-memory rate limiter (rate_limiter.py) -
+    doesn't consume any budget. Called once by the page's badge on load to
+    show a real number before the visitor's first message.
+    """
+    remaining, reset_in = rate_limiter.status()
+    return {
+        "remaining": remaining,
+        "reset_in": max(0, round(reset_in)),
+        "limit": rate_limiter.MAX_REQUESTS,
+        "window_seconds": rate_limiter.WINDOW_SECONDS,
+    }
+
+
+@app.exception_handler(rate_limiter.RateLimitExceeded)
+def handle_rate_limit_exceeded(request: Request, exc: rate_limiter.RateLimitExceeded):
+    return JSONResponse(status_code=429, content={"detail": str(exc)})
+
+
+@app.middleware("http")
+async def add_rate_limit_headers(request: Request, call_next):
+    """Stamp the current rate-limit snapshot onto every response (success or
+    429 alike - the exception handler above runs before this middleware sees
+    the response), so the badge updates off requests the page was already
+    making, no separate polling needed.
+    """
+    response = await call_next(request)
+    remaining, reset_in = rate_limiter.status()
+    reset_seconds = max(0, round(reset_in))
+    response.headers["X-RateLimit-Limit"] = str(rate_limiter.MAX_REQUESTS)
+    response.headers["X-RateLimit-Window-Seconds"] = str(rate_limiter.WINDOW_SECONDS)
+    response.headers["X-RateLimit-Remaining"] = str(remaining)
+    response.headers["X-RateLimit-Reset"] = str(reset_seconds)
+    if response.status_code == 429:
+        response.headers["Retry-After"] = str(max(1, reset_seconds))
+    return response
+
 
 # Default cosine-distance cutoff for the "hide weak matches" filter. Kept
 # here as the single source of truth; the frontend's default input value
@@ -192,6 +234,13 @@ def api_chat(req: ChatRequest):
 
     context_block = llm.build_context_block(results)
     history = [{"role": t.role, "content": t.content} for t in req.history]
+    # Reserve right before the one real Mistral call this turn makes - not
+    # earlier, so a turn that never reaches Mistral (the no-context return
+    # above) doesn't spend any budget. Left to raise RateLimitExceeded
+    # uncaught: the except below only wraps llm.call_mistral's own
+    # RuntimeError, so this propagates to the global exception handler as a
+    # clean 429 instead of being folded into that 500/502 path.
+    rate_limiter.reserve(1)
     try:
         reply = llm.call_mistral(history, req.message, context_block)
     except RuntimeError as e:

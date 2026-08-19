@@ -16,7 +16,19 @@ async function postJSON(url, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+  if (!res.ok) {
+    // FastAPI's default error body is {"detail": "..."} - surface that
+    // (e.g. the rate limiter's "Rate limit reached — try again in 8s")
+    // instead of just the bare status code, when it's there to read.
+    let message = `${url} -> ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data && typeof data.detail === "string") message = data.detail;
+    } catch {
+      // no JSON body — keep the generic message
+    }
+    throw new Error(message);
+  }
   return res.json();
 }
 
@@ -178,3 +190,91 @@ function renderResultGroup(container, title, results) {
   }
   container.appendChild(group);
 }
+
+// --- Rate-limit badge -------------------------------------------------
+// Every response carries X-RateLimit-{Limit,Window-Seconds,Remaining,Reset}
+// headers (see webapp/app.py's middleware) - read them off responses this
+// page was already making, and reflect them in a small fixed badge. No
+// dedicated polling: the only extra request is a one-shot GET on page
+// load, to have a number on screen before the visitor's first action.
+//
+// Patches window.fetch once, globally, rather than editing postJSON (some
+// pages here - e.g. the document/corpus viewers - fetch directly, not
+// through postJSON) so every call site is covered without changes.
+
+let _rateLimitResetTimer = null;
+
+function _rateLimitBadgeText(remaining, secondsLeft) {
+  const left = `${remaining} request${remaining === 1 ? "" : "s"} left`;
+  return secondsLeft > 0 ? `${left} · resets in ${secondsLeft}s` : left;
+}
+
+function _renderRateLimitBadge(remaining, limit, resetSeconds, windowSeconds) {
+  const badge = document.getElementById("rate-limit-badge");
+  if (!badge) return;
+
+  const known = remaining !== null && limit !== null && !Number.isNaN(remaining) && !Number.isNaN(limit);
+  // Nothing's been spent yet (a fresh window, or right after one just
+  // reset) - a countdown here would just be ticking down to reset a budget
+  // that's already full, which reads as a bug rather than information.
+  const nothingToReset = known && remaining >= limit;
+  badge.textContent = known ? _rateLimitBadgeText(remaining, nothingToReset ? 0 : resetSeconds) : "";
+  badge.title =
+    known && windowSeconds
+      ? `Simple demo rate limit (not Mistral's own) — up to ${limit} requests per ${windowSeconds}s`
+      : "";
+  badge.hidden = !known;
+
+  if (_rateLimitResetTimer) clearInterval(_rateLimitResetTimer);
+  if (!known || nothingToReset) return;
+
+  let secondsLeft = resetSeconds;
+  _rateLimitResetTimer = setInterval(() => {
+    secondsLeft -= 1;
+    if (secondsLeft <= 0) {
+      clearInterval(_rateLimitResetTimer);
+      // The limiter's fixed window always resets fully once it elapses
+      // (see _FixedWindowLimiter._reset_if_elapsed in rate_limiter.py) -
+      // apply that same rule here instead of leaving the last-known
+      // `remaining` stale until the next real request refreshes it.
+      badge.textContent = _rateLimitBadgeText(limit, 0);
+      return;
+    }
+    badge.textContent = _rateLimitBadgeText(remaining, secondsLeft);
+  }, 1000);
+}
+
+function _updateRateLimitBadgeFromHeaders(headers) {
+  const remaining = headers.get("X-RateLimit-Remaining");
+  const limit = headers.get("X-RateLimit-Limit");
+  const reset = headers.get("X-RateLimit-Reset");
+  const window = headers.get("X-RateLimit-Window-Seconds");
+  if (remaining === null || limit === null || reset === null) return;
+  _renderRateLimitBadge(Number(remaining), Number(limit), Number(reset), Number(window));
+}
+
+function _injectRateLimitBadge() {
+  const badge = el("div", "rate-limit-badge");
+  badge.id = "rate-limit-badge";
+  badge.hidden = true;
+  document.body.appendChild(badge);
+}
+
+const _nativeFetch = window.fetch.bind(window);
+window.fetch = async (...args) => {
+  const response = await _nativeFetch(...args);
+  _updateRateLimitBadgeFromHeaders(response.headers);
+  return response;
+};
+
+_injectRateLimitBadge();
+// One-shot seed so the badge shows a real number before the visitor's
+// first action - not a poll, this fires once per page load only.
+_nativeFetch("/api/rate-limit/status")
+  .then((response) => response.json())
+  .then((data) =>
+    _renderRateLimitBadge(data.remaining, data.limit, data.reset_in, data.window_seconds)
+  )
+  .catch(() => {
+    /* leave the badge hidden if this one-shot call fails */
+  });
