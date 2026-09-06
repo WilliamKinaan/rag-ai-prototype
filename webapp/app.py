@@ -44,6 +44,7 @@ from ingest import get_collection  # noqa: E402
 from loader import load_documents  # noqa: E402
 from query import search  # noqa: E402
 
+import legal_rate_limiter  # noqa: E402
 import legal_review  # noqa: E402
 import llm  # noqa: E402
 import rate_limiter  # noqa: E402
@@ -295,8 +296,24 @@ def api_chat(req: ChatRequest):
     return {"reply": reply, "sources": results, "no_context": False}
 
 
+def _client_ip(request: Request) -> str:
+    """Best-effort real client address behind the production proxy chain
+    (Cloudflare -> nginx, see CONTEXT-deploy-oracle.md) - prefer
+    Cloudflare's own header (one unambiguous value), then the
+    X-Forwarded-For chain nginx is configured to set, then the raw socket
+    peer as a last resort (correct for local dev, where nothing proxies).
+    """
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip:
+        return cf_ip.strip()
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @app.post("/api/legal-review")
-async def api_legal_review(file: UploadFile = File(...), provider: str = Form(...)):
+async def api_legal_review(request: Request, file: UploadFile = File(...), provider: str = Form(...)):
     """Legal Assistant: upload a contract, get back a structured review.
     See webapp/legal_review.py for the model-agnostic review logic - this
     endpoint is just upload handling + error-status mapping.
@@ -315,14 +332,21 @@ async def api_legal_review(file: UploadFile = File(...), provider: str = Form(..
 
     text, truncated = legal_review.truncate(text)
 
-    # Only the Mistral call spends from the shared-key rate limiter (see
-    # .env.example / rate_limiter.py) - that budget is specifically this
-    # app's share of a Mistral key shared with two other apps, unrelated to
-    # OpenAI/Anthropic quota. Reserving it for every provider would reject a
-    # Claude/GPT review because someone used the RAG chat on Mistral seconds
-    # earlier, with a confusing Mistral-flavored error. OpenAI/Anthropic
-    # calls go out unmetered for now - a known phase-1 gap, not an oversight
-    # (see plans/phase1-legal-assistant.md).
+    # Legal Assistant's own guard, independent of provider: at most 2
+    # requests/minute per model and 10 requests/30min per client IP (see
+    # legal_rate_limiter.py). Raises a RateLimitExceeded subclass, which the
+    # existing exception handler below (registered for the base
+    # rate_limiter.RateLimitExceeded class) already turns into a 429 - no
+    # separate handler needed.
+    legal_rate_limiter.reserve(provider, _client_ip(request))
+
+    # On top of that, only the Mistral call also spends from the
+    # shared-key rate limiter (see .env.example / rate_limiter.py) - that
+    # budget is specifically this app's share of a Mistral key shared with
+    # two other apps, unrelated to OpenAI/Anthropic quota. Reserving it for
+    # every provider would reject a Claude/GPT review because someone used
+    # the RAG chat on Mistral seconds earlier, with a confusing
+    # Mistral-flavored error.
     if provider == "mistral":
         rate_limiter.reserve(1)
 

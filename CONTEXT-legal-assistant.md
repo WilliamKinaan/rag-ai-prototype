@@ -2,7 +2,8 @@
 
 _Last updated: 2026-09-06_
 **Status: implemented, not yet smoke-tested against real API keys for
-OpenAI/Anthropic (only Mistral has a key configured in this environment).**
+OpenAI/Anthropic (only Mistral has a key configured in this environment).
+Rate limiting (per model + per IP) added and verified end-to-end.**
 
 Roadmap source: [the team's phase-tracker sheet](https://docs.google.com/spreadsheets/d/19mBq97Qhwr4y6phYfIBKrQXxneOMBe8cfAcB76z6o5I/edit?gid=212163437#gid=212163437),
 Phase 1 ("Baseline LLM only") — see `plans/phase1-legal-assistant.md` for the
@@ -35,19 +36,21 @@ The sheet's Phase 1 explicitly asks to "test multiple hosted models
 (OpenAI/Anthropic/Mistral/Gemini)". Rather than hardcode one, `legal.html`
 exposes a dropdown, and `webapp/legal_review.py` has one call function per
 provider behind a single `review_contract(provider, text)` dispatcher.
-Gemini isn't wired up (no existing precedent in this repo, no key), but the
-dispatcher pattern makes adding it later a matter of one more function + one
-more registry entry.
+Gemini is listed in the dropdown as "not yet supported" (no existing
+precedent in this repo, no key) — picking it gets a clean 400 from
+`webapp/app.py` ("'gemini' is not yet supported. Choose one of: ...")
+rather than pretending it works; the dispatcher pattern makes actually
+wiring it up later a matter of one more function + one more registry entry.
 
 Mistral is the **default** selection — not because it's the best output, but
 because it's the only provider with a key already configured in this repo's
-`.env` (the RAG chat has used it since V2). The UI says so explicitly, since
-a demo whose default option produces the weakest output would otherwise read
-as a bug. `ministral-8b-latest` also has no guaranteed structured-output
-mode, unlike OpenAI/Anthropic below — its JSON is prompt-enforced and parsed
-leniently (strip ` ```json ` fences, `json.loads`, then Pydantic validation),
-and a parse failure surfaces as a clean 422 ("try a different model") rather
-than a 500, since the dropdown makes this a user-selectable outcome.
+`.env` (the RAG chat has used it since V2). `ministral-8b-latest` also has
+no guaranteed structured-output mode, unlike OpenAI/Anthropic below — its
+JSON is prompt-enforced and parsed leniently (strip ` ```json ` fences,
+`json.loads`, an unwrap step for a schema-nesting mistake observed in
+practice — see `_unwrap_sections()` — then Pydantic validation), and a
+parse failure surfaces as a clean 422 ("try a different model") rather than
+a 500, since the dropdown makes this a user-selectable outcome.
 
 ## Structured output, per provider
 
@@ -70,23 +73,38 @@ than a 500, since the dropdown makes this a user-selectable outcome.
 `ContractReview`/`ReviewSection`/`Issue` (Pydantic models in
 `webapp/legal_review.py`) are the one schema all three providers target.
 
-## Rate limiting: Mistral-only, on purpose
+## Rate limiting: two layers
 
-`webapp/rate_limiter.py`'s in-memory budget exists because the Mistral key
-is shared across three separate live apps in one workspace (see
-`.env.example`) — it is this app's *share* of that shared quota, nothing
-more general. `/api/legal-review` only calls `rate_limiter.reserve(1)` when
-`provider == "mistral"`. Reserving it unconditionally would mean a Claude or
-GPT contract review could get rejected because someone used the unrelated
-RAG chat on Mistral seconds earlier, surfaced as a confusing
-Mistral-flavored 429. OpenAI/Anthropic calls go out with no local rate/cost
-guard for now — a known phase-1 gap, not an oversight.
+**Layer 1 — Legal Assistant's own guard, all providers** (`webapp/
+legal_rate_limiter.py`, new): at most **2 requests/minute per model** and
+**10 requests/30 minutes per client IP**, both in-memory fixed-window
+counters (reusing `rate_limiter.py`'s `_FixedWindowLimiter`, one instance
+per model name and one per IP, the IP dict never evicted — "simple, good
+enough to start" per the brief this was built to). `/api/legal-review`
+calls `legal_rate_limiter.reserve(provider, ip)` right after truncating the
+extracted text, for every provider. The IP is read via `_client_ip()` in
+`webapp/app.py`: prefers Cloudflare's `CF-Connecting-IP` header, then the
+`X-Forwarded-For` chain nginx sets (see `CONTEXT-deploy-oracle.md`), then
+the raw socket peer as a local-dev fallback. Both `ModelRateLimitExceeded`
+and `IPRateLimitExceeded` subclass `rate_limiter.RateLimitExceeded`, so the
+existing global `@app.exception_handler(rate_limiter.RateLimitExceeded)`
+already turns either into a 429 with a friendly message — no separate
+handler needed. Verified end-to-end: tripping the per-model limit, tripping
+the per-IP limit across mixed providers, and confirming a different
+`X-Forwarded-For` value gets its own independent IP bucket.
 
-The rate-limit badge (`common.js`) is also suppressed on `legal.html` for
-the same reason: it renders the Mistral-only budget, which is meaningless
-context on a page where the active call might be to a different provider
-entirely. `legal.html` sets `window.SUPPRESS_RATE_LIMIT_BADGE = true` before
-loading `common.js`.
+**Layer 2 — the shared Mistral key's own budget, Mistral only**
+(`webapp/rate_limiter.py`, pre-existing): exists because that key is shared
+across three separate live apps in one workspace (see `.env.example`) — a
+narrower, unrelated concern from Layer 1. `/api/legal-review` only calls
+`rate_limiter.reserve(1)` when `provider == "mistral"`, on top of Layer 1's
+check — reserving it unconditionally would reject a Claude/GPT review
+because someone used the unrelated RAG chat on Mistral seconds earlier.
+
+The rate-limit badge (`common.js`) is suppressed on `legal.html`: it renders
+Layer 2's Mistral-only budget, which is meaningless context on a page where
+the active call might be to a different provider entirely. `legal.html`
+sets `window.SUPPRESS_RATE_LIMIT_BADGE = true` before loading `common.js`.
 
 ## File parsing
 
@@ -113,7 +131,8 @@ only needed if that dropdown option is actually selected).
   method signatures, not a live end-to-end call (no API keys available in
   this environment when built) — worth a real smoke test with actual keys
   before relying on this in front of anyone else.
-- No rate/cost guard on OpenAI/Anthropic calls (see above).
+- Layer 1's per-IP dict (`legal_rate_limiter.py`) is never evicted — fine
+  for a prototype, would need cleanup/expiry before real traffic.
 - No contract-category classification, no benchmark harness — both are
   separate sheet tasks, deferred by explicit user request.
 - Gemini isn't wired up (no existing precedent/key in this repo).
