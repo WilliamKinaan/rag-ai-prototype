@@ -1,7 +1,30 @@
 # Context: Interactive Web Demo (V1.5)
 
-_Last updated: 2026-08-10_
+_Last updated: 2026-09-06_
 **Status: implemented and smoke-tested locally. Static-only deploy live on Netlify (see below). Full backend deployment (Hugging Face Space) blocked/paused — see the Space section further down.**
+
+## Fast local startup: `SKIP_RAG_INDEX` (local dev only)
+
+Normal startup (`_on_startup` in `webapp/app.py`) loads the ~2GB `bge-m3`
+embedding model and encodes the whole corpus before the server accepts
+requests — ~40-60s on a CPU-only dev machine. Added `SKIP_RAG_INDEX=1` as an
+inline env var (not read from `.env`, deliberately, so it can't leak into
+the deployed environment by copying/reusing that file) to skip that build
+entirely when only working on the Legal Assistant page, which doesn't touch
+the RAG index at all:
+
+```bash
+SKIP_RAG_INDEX=1 uvicorn webapp.app:app --reload --port 8000
+```
+
+Brings startup down to ~5-6s. With it set, `/api/index-stats`, `/api/query`,
+`/api/chat`, `/api/corpus`, and `/api/corpus/{source}` all return a clean 503
+("RAG index wasn't built...") via a shared `_require_rag_index()` guard,
+rather than crashing on a bare `KeyError`. `/api/chunk`, `/api/embed`, and
+`/api/legal-review` are unaffected — they don't depend on the built index.
+**Never set this on the real deploy** — the Oracle instance must keep
+building the full index on every restart, which is exactly why this isn't a
+`.env` entry.
 
 ## Netlify deploy — static frontend only, by explicit choice
 

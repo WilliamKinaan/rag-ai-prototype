@@ -4,8 +4,22 @@ Thin wrapper around the existing src/ pipeline — no chunking/embedding/
 retrieval logic is reimplemented here, only exposed over HTTP. Run with:
 
     uvicorn webapp.app:app --reload --port 8000
+
+Local-only fast path: building the RAG index at startup loads the ~2GB
+bge-m3 embedding model and encodes the whole corpus, which takes a while on
+a CPU-only dev machine. If you only want to work on the Legal Assistant
+page (which doesn't use the RAG index at all), skip that with:
+
+    SKIP_RAG_INDEX=1 uvicorn webapp.app:app --reload --port 8000
+
+This must never be set in the real deploy (see CONTEXT-webapp.md) — it's
+not read from .env on purpose, so it can't leak into the deployed
+environment by copying/reusing that file; pass it inline on the command
+line each time instead. With it set, the RAG demo/search/explore/corpus
+pages return a clean 503 instead of working.
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -17,7 +31,7 @@ sys.path.insert(0, str(WEBAPP_DIR))  # so `import llm` (webapp/llm.py) resolves
 import sqlite_shim  # noqa: E402,F401  (must precede `import chromadb` — see module docstring)
 import chromadb  # noqa: E402
 import numpy as np  # noqa: E402
-from fastapi import FastAPI, HTTPException, Request  # noqa: E402
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
@@ -30,10 +44,14 @@ from ingest import get_collection  # noqa: E402
 from loader import load_documents  # noqa: E402
 from query import search  # noqa: E402
 
+import legal_review  # noqa: E402
 import llm  # noqa: E402
 import rate_limiter  # noqa: E402
 
 app = FastAPI(title="RAG Prototype Demo")
+
+# See the module docstring - local dev only, never set on the real deploy.
+SKIP_RAG_INDEX = os.environ.get("SKIP_RAG_INDEX", "").strip().lower() in ("1", "true", "yes")
 
 
 @app.get("/api/rate-limit/status")
@@ -117,8 +135,30 @@ def build_index_state() -> dict:
 
 @app.on_event("startup")
 def _on_startup() -> None:
+    if SKIP_RAG_INDEX:
+        print("[startup] SKIP_RAG_INDEX set - skipping RAG index build. "
+              "The RAG demo, search, explore, and corpus pages will return "
+              "a 503 until the server is restarted without that flag.")
+        return
     if "collection" not in state:  # idempotent: harmless if already populated
         state.update(build_index_state())
+
+
+def _require_rag_index() -> None:
+    """Raise a clean 503 instead of a bare KeyError on `state["collection"]`
+    when the index wasn't built - i.e. the server was started with
+    SKIP_RAG_INDEX set for fast local iteration on the Legal Assistant page
+    alone. Never set in the real deploy - see the module docstring above.
+    """
+    if "collection" not in state:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "The RAG index wasn't built (server started with "
+                "SKIP_RAG_INDEX set). Restart without that flag to use "
+                "this page."
+            ),
+        )
 
 
 # --- request/response models ------------------------------------------
@@ -154,6 +194,7 @@ class ChatRequest(BaseModel):
 
 @app.get("/api/index-stats")
 def index_stats():
+    _require_rag_index()
     collection = state["collection"]
     return {
         "model_name": EMBEDDING_MODEL_NAME,
@@ -185,6 +226,7 @@ def api_embed(req: EmbedRequest):
 
 @app.post("/api/query")
 def api_query(req: QueryRequest):
+    _require_rag_index()
     collection = state["collection"]
 
     query_vec = embed([req.query], is_query=True)[0]
@@ -214,6 +256,7 @@ def api_query(req: QueryRequest):
 
 @app.post("/api/chat")
 def api_chat(req: ChatRequest):
+    _require_rag_index()
     collection = state["collection"]
 
     # Retrieval query: fold in the last user turn for follow-ups ("what
@@ -252,6 +295,49 @@ def api_chat(req: ChatRequest):
     return {"reply": reply, "sources": results, "no_context": False}
 
 
+@app.post("/api/legal-review")
+async def api_legal_review(file: UploadFile = File(...), provider: str = Form(...)):
+    """Legal Assistant: upload a contract, get back a structured review.
+    See webapp/legal_review.py for the model-agnostic review logic - this
+    endpoint is just upload handling + error-status mapping.
+    """
+    if provider not in legal_review.PROVIDERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"'{provider}' is not yet supported. Choose one of: {', '.join(legal_review.PROVIDERS)}.",
+        )
+
+    content = await file.read()
+    try:
+        text = legal_review.extract_text(file.filename or "", content)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    text, truncated = legal_review.truncate(text)
+
+    # Only the Mistral call spends from the shared-key rate limiter (see
+    # .env.example / rate_limiter.py) - that budget is specifically this
+    # app's share of a Mistral key shared with two other apps, unrelated to
+    # OpenAI/Anthropic quota. Reserving it for every provider would reject a
+    # Claude/GPT review because someone used the RAG chat on Mistral seconds
+    # earlier, with a confusing Mistral-flavored error. OpenAI/Anthropic
+    # calls go out unmetered for now - a known phase-1 gap, not an oversight
+    # (see plans/phase1-legal-assistant.md).
+    if provider == "mistral":
+        rate_limiter.reserve(1)
+
+    try:
+        review = legal_review.review_contract(provider, text)
+    except legal_review.ReviewConfigError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except legal_review.ReviewUpstreamError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except legal_review.ReviewParseError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    return {"provider": provider, "truncated": truncated, "review": review.model_dump()}
+
+
 def _doc_title(text: str) -> str:
     """First markdown H1 line, if present, else empty."""
     for line in text.splitlines():
@@ -263,6 +349,7 @@ def _doc_title(text: str) -> str:
 
 @app.get("/api/corpus")
 def api_corpus():
+    _require_rag_index()
     return {
         "documents": [
             {"source": source, "title": _doc_title(text) or source}
@@ -273,6 +360,7 @@ def api_corpus():
 
 @app.get("/api/corpus/{source}")
 def api_corpus_document(source: str):
+    _require_rag_index()
     docs = state["docs"]
     if source not in docs:
         raise HTTPException(status_code=404, detail=f"No such document: {source}")

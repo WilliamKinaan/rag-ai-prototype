@@ -267,14 +267,20 @@ window.fetch = async (...args) => {
   return response;
 };
 
-_injectRateLimitBadge();
-// One-shot seed so the badge shows a real number before the visitor's
-// first action - not a poll, this fires once per page load only.
-_nativeFetch("/api/rate-limit/status")
-  .then((response) => response.json())
-  .then((data) =>
-    _renderRateLimitBadge(data.remaining, data.limit, data.reset_in, data.window_seconds)
-  )
-  .catch(() => {
-    /* leave the badge hidden if this one-shot call fails */
-  });
+// legal.html sets this before loading common.js: the badge reflects only
+// this app's shared-Mistral-key budget (see rate_limiter.py), which is
+// meaningless on a page where the user may be calling OpenAI or Anthropic
+// instead - showing it there would just be confusing.
+if (!window.SUPPRESS_RATE_LIMIT_BADGE) {
+  _injectRateLimitBadge();
+  // One-shot seed so the badge shows a real number before the visitor's
+  // first action - not a poll, this fires once per page load only.
+  _nativeFetch("/api/rate-limit/status")
+    .then((response) => response.json())
+    .then((data) =>
+      _renderRateLimitBadge(data.remaining, data.limit, data.reset_in, data.window_seconds)
+    )
+    .catch(() => {
+      /* leave the badge hidden if this one-shot call fails */
+    });
+}

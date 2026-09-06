@@ -3,3 +3,11 @@ fastapi==0.115.6
 uvicorn==0.34.0
 httpx==0.28.1
 python-dotenv==1.2.2
+
+# Legal Assistant (Phase 1) - file upload + contract parsing + hosted-model
+# structured output. See webapp/legal_review.py.
+python-multipart==0.0.32
+pypdf==6.17.0
+python-docx==1.2.0
+anthropic==1.4.0
+openai==3.8.0

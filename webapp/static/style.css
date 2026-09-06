@@ -404,3 +404,90 @@ button:not(:disabled):hover { filter: brightness(1.1); }
   justify-content: center;
   margin-top: 0.5rem;
 }
+
+/* --- Landing page --- */
+
+.landing-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+}
+
+.choice-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.choice-card:hover { border-color: var(--accent); }
+
+.choice-card h2 { margin: 0; font-size: 1.2rem; }
+.choice-card p { margin: 0; color: var(--muted); font-size: 0.9rem; flex: 1; }
+.choice-card .choice-cta { color: var(--accent); font-size: 0.88rem; font-weight: 600; }
+
+/* --- Legal assistant page --- */
+
+.upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.upload-row select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.92rem;
+}
+
+.upload-row button { margin-top: 0; }
+
+.review-notice {
+  background: #fff8e1;
+  border: 1px solid #e6c65c;
+  color: #7a5b00;
+  border-radius: 6px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.85rem;
+}
+
+.review-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.15rem;
+}
+
+.review-section h3 { margin: 0 0 0.75rem; font-size: 1rem; }
+
+.review-issue {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.88rem;
+}
+
+.review-issue + .review-issue { margin-top: 0.6rem; }
+
+.review-issue .label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.2rem;
+}
+
+.review-issue .flagged-text { margin: 0 0 0.65rem; white-space: pre-wrap; }
+.review-issue .suggestion { margin: 0; white-space: pre-wrap; }

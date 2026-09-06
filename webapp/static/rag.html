@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your UAE Law Assistant</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="disclaimer">
+    ⚠️ <strong>Testing prototype — not legal advice.</strong> This is a demo of
+    retrieval-augmented generation. Its sample documents are simplified,
+    illustrative summaries that may be incomplete or inaccurate, and the
+    model's answers must never be used as a substitute for advice from a
+    qualified lawyer. Do not rely on anything from this page for any real
+    decision.
+  </div>
+
+  <header>
+    <h1>Your UAE Law Assistant</h1>
+    <p class="subtitle">
+      Ask a question in plain English. We've prepared a
+      <a href="/corpus.html">library of UAE law documents</a> — for every
+      question, the assistant finds the passages most relevant to it and
+      answers using only that material, so its answers stay grounded in
+      the source documents rather than general AI knowledge.
+    </p>
+  </header>
+
+  <main>
+    <section id="chat" class="step">
+      <div class="chat-toolbar">
+        <button id="new-chat-btn" class="btn-secondary" type="button">+ New chat</button>
+      </div>
+      <div id="chat-log" class="chat-log"></div>
+      <div class="threshold-row">
+        <label for="max-distance">Max distance (hide weaker matches):</label>
+        <span class="help-icon" tabindex="0" title="You can increase this to see more results, but a higher value means less accurate matches.">?</span>
+        <input id="max-distance" type="number" min="0" max="2" step="0.01" value="0.6" />
+      </div>
+      <div class="chat-input-row">
+        <input id="chat-input" type="text" placeholder="e.g. Do I need a notary to set up my company?" />
+        <button id="chat-btn">Send</button>
+      </div>
+      <div id="chat-error"></div>
+    </section>
+
+    <nav class="chat-nav">
+      <a href="/search.html">Chunk search only (no LLM) →</a>
+      <a href="/explore.html">Explore the pipeline step by step →</a>
+      <a href="/corpus.html">View the corpus used →</a>
+    </nav>
+  </main>
+
+  <script src="/common.js"></script>
+  <script src="/chat.js"></script>
+</body>
+</html>

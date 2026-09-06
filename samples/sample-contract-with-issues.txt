@@ -1,0 +1,64 @@
+INDEPENDENT CONTRACTOR SERVICES AGREEMENT
+
+This Independent Contractor Services Agreement ("Agreement") is entered into
+between Acme Client LLC ("Client") and the individual or entity signing below
+("Contractor").
+
+1. Term
+This Agreement begins on the Effective Date and shall continue in effect
+until either party decides to end it.
+
+2. Services
+Contractor shall provide software development services to Client as
+reasonably requested from time to time.
+
+3. Termination
+Client may terminate this Agreement at any time, for any reason or no
+reason, effective immediately upon written or verbal notice. Contractor may
+not terminate this Agreement except for Client's uncured material breach,
+and must provide 90 days' advance written notice before doing so.
+
+4. Payment
+Client shall pay Contractor's invoices within 120 days of receipt. No
+interest or penalty shall accrue on any late payment, regardless of cause
+or duration of delay.
+
+5. Ownership of Work Product
+Contractor will create various deliverables in the course of performing the
+Services. Ownership of these deliverables will be determined at Client's
+discretion at a later date.
+
+6. Confidentiality
+Contractor agrees to keep all information disclosed by Client confidential
+forever, and shall not disclose it to any party under any circumstances,
+including in response to a valid court order. Client shall have no
+corresponding confidentiality obligations with respect to any information
+Contractor discloses to Client.
+
+7. Non-Competition
+During the Term and for a period of ten (10) years thereafter, Contractor
+shall not, anywhere in the world, provide software development services of
+any kind to any individual or company, whether or not such services compete
+with Client's business.
+
+8. Limitation of Liability
+Contractor's total liability to Client under this Agreement, whether in
+contract, tort, or otherwise, shall be unlimited. Client shall have no
+liability to Contractor under any circumstances.
+
+9. Indemnification
+Contractor shall indemnify, defend, and hold harmless Client from any and
+all claims, damages, and expenses arising out of or related to this
+Agreement, including claims arising from Client's own negligence or willful
+misconduct.
+
+10. Independent Contractor Status
+Contractor is an independent contractor and not an employee of Client.
+Nothing in this Agreement shall be construed to create an employment
+relationship.
+
+11. Signatures
+This Agreement is entered into as of the Effective Date written above.
+
+Client: ___________________________
+Contractor: ___________________________
