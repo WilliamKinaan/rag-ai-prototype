@@ -11,3 +11,8 @@ pypdf==6.17.0
 python-docx==1.2.0
 anthropic==1.4.0
 openai==3.8.0
+
+# Admin auth (webapp/cf_access.py) - verifies Cloudflare Access JWTs
+# server-side. [crypto] pulls in `cryptography` for RS256 signature
+# verification. See CONTEXT-admin-auth.md.
+PyJWT[crypto]==2.13.0
