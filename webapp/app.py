@@ -350,12 +350,13 @@ async def api_legal_review(request: Request, file: UploadFile = File(...), provi
     if provider == "mistral":
         rate_limiter.reserve(1)
 
-    # Qwen-only Layer 3: a hard cap on total Qwen calls *per day*, shared
-    # across every visitor - unlike the per-minute check above, this one
-    # doesn't reset every window, so it actually bounds daily spend on a
-    # paid key rather than just burst rate. See legal_rate_limiter.py.
-    if provider == "qwen":
-        legal_rate_limiter.reserve_qwen_daily()
+    # Layer 3: a hard cap on total calls *per day* to whichever providers
+    # are cost-sensitive enough to have one configured (currently Qwen and
+    # Anthropic - see DAILY_CAPS in legal_rate_limiter.py). Unlike the
+    # per-minute check above, this one doesn't reset every window, so it
+    # actually bounds daily spend on a paid key rather than just burst
+    # rate. A no-op for any provider without an entry there.
+    legal_rate_limiter.reserve_daily(provider)
 
     try:
         review = legal_review.review_contract(provider, text)

@@ -66,49 +66,72 @@ class IPRateLimitExceeded(RateLimitExceeded):
         )
 
 
-# --- Qwen-only daily cap (Layer 3) -----------------------------------------
+# --- Per-provider daily cap (Layer 3) ---------------------------------
 #
-# Unlike the two limiters above, this one bounds *daily total spend*, not
-# burst rate: PER_MODEL_MAX_REQUESTS resets every minute, so a steady stream
-# of requests all day still passes through it every single window. Added on
-# direct request once Qwen became a real per-token cost on a live site (see
-# CONTEXT-legal-assistant.md) - it's a cost circuit breaker shared across
-# every visitor combined, not a per-user throttle, and deliberately
-# Qwen-only rather than a generic per-provider knob: Qwen is the one
-# provider here without any other cost guardrail (Mistral has
-# rate_limiter.py's shared-key budget; OpenAI/Anthropic weren't part of
-# this ask). Same in-memory/resets-on-restart caveat as everything else in
-# this module - not a substitute for a real spend cap on the DashScope
-# console itself.
-QWEN_DAILY_MAX_REQUESTS = 100
-QWEN_DAILY_WINDOW_SECONDS = 24 * 60 * 60.0
+# Unlike the two limiters above, this bounds *daily total spend*, not burst
+# rate: PER_MODEL_MAX_REQUESTS resets every minute, so a steady stream of
+# requests all day still passes through it every single window. Added on
+# direct request once a paid-per-token provider (Qwen, then Anthropic) went
+# live on a real site (see CONTEXT-legal-assistant.md) - a cost circuit
+# breaker shared across every visitor combined, not a per-user throttle.
+#
+# One dict of per-provider limits rather than a Qwen-specific function
+# duplicated for each new paid provider - DAILY_CAPS is the only thing that
+# needs a new line when the next provider needs this (e.g. OpenAI later).
+# A provider with no entry here just isn't covered by this layer at all
+# (currently: Mistral has rate_limiter.py's own shared-key budget instead;
+# OpenAI has neither yet). Values are per-provider because cost per request
+# varies a lot: Anthropic's Sonnet 5 runs roughly 7-10x Qwen-plus's
+# per-token price, so its cap is set tighter for a comparable dollar-risk,
+# not matched request-for-request. Same in-memory/resets-on-restart caveat
+# as everything else in this module - not a substitute for a real spend cap
+# set on the provider's own console.
+DAILY_CAPS = {
+    "qwen": 100,
+    "anthropic": 20,
+}
+DAILY_WINDOW_SECONDS = 24 * 60 * 60.0
 
-_qwen_daily_limiter = _FixedWindowLimiter(QWEN_DAILY_MAX_REQUESTS, QWEN_DAILY_WINDOW_SECONDS)
+_daily_limiters: dict[str, _FixedWindowLimiter] = {}
+_daily_limiters_lock = threading.Lock()
 
 
-class QwenDailyLimitExceeded(RateLimitExceeded):
-    """The daily cap on total Qwen legal-review calls (all visitors
-    combined) has been reached."""
+class DailyLimitExceeded(RateLimitExceeded):
+    """The daily cap on total legal-review calls to one provider (all
+    visitors combined) has been reached."""
 
-    def __init__(self, retry_after: float):
+    def __init__(self, provider: str, retry_after: float):
         self.retry_after = retry_after
         hours = max(1, round(retry_after / 3600))
         Exception.__init__(
             self,
-            f"The daily limit of {QWEN_DAILY_MAX_REQUESTS} Qwen legal-review "
-            f"requests (shared across all visitors) has been reached. Please "
-            f"try again in about {hours} hour(s), or pick a different model.",
+            f"The daily limit of {DAILY_CAPS[provider]} '{provider}' "
+            f"legal-review requests (shared across all visitors) has been "
+            f"reached. Please try again in about {hours} hour(s), or pick "
+            f"a different model.",
         )
 
 
-def reserve_qwen_daily() -> None:
-    """Reserve one request against the Qwen daily cap, or raise. Call this
-    in addition to (after) reserve() above, only for provider == "qwen" -
-    see app.py."""
+def _get_daily_limiter(provider: str) -> _FixedWindowLimiter:
+    with _daily_limiters_lock:
+        limiter = _daily_limiters.get(provider)
+        if limiter is None:
+            limiter = _FixedWindowLimiter(DAILY_CAPS[provider], DAILY_WINDOW_SECONDS)
+            _daily_limiters[provider] = limiter
+        return limiter
+
+
+def reserve_daily(provider: str) -> None:
+    """Reserve one request against `provider`'s daily cap, or raise. A
+    no-op for any provider not listed in DAILY_CAPS - call this
+    unconditionally after reserve() above (see app.py) rather than gating
+    on a provider list there too."""
+    if provider not in DAILY_CAPS:
+        return
     try:
-        _qwen_daily_limiter.reserve(1)
+        _get_daily_limiter(provider).reserve(1)
     except RateLimitExceeded as e:
-        raise QwenDailyLimitExceeded(e.retry_after) from e
+        raise DailyLimitExceeded(provider, e.retry_after) from e
 
 
 # One limiter per provider name, created lazily on first use so this module

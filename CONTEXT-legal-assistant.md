@@ -129,27 +129,40 @@ Layer 2's Mistral-only budget, which is meaningless context on a page where
 the active call might be to a different provider entirely. `legal.html`
 sets `window.SUPPRESS_RATE_LIMIT_BADGE = true` before loading `common.js`.
 
-**Layer 3 — Qwen-only daily cap** (`legal_rate_limiter.py`'s
-`reserve_qwen_daily()`, new): at most **100 Qwen requests/day, shared
-across every visitor** — a cost circuit-breaker, added on direct request
-once Qwen became a real per-token cost on a live site. Layer 1's per-model
-check is per-*minute* and resets every window, so it bounds burst rate, not
-daily spend; this one doesn't reset until the full 24h window elapses.
-Qwen-only rather than a generic per-provider knob, since Qwen was the one
-provider here with no other cost guardrail (Mistral has Layer 2's
-shared-key budget above; OpenAI/Anthropic weren't part of this ask).
-`app.py` calls it right after the Mistral-only Layer 2 check, only when
-`provider == "qwen"`. `QwenDailyLimitExceeded` subclasses
+**Layer 3 — per-provider daily cap** (`legal_rate_limiter.py`'s
+`reserve_daily(provider)`, new): a hard cap on total calls/day, shared
+across every visitor, for whichever providers are cost-sensitive enough to
+have one — currently **Qwen: 100/day**, **Anthropic: 20/day** (Sonnet 5
+runs ~7-10x Qwen-plus's per-token price, so its cap is set tighter for a
+comparable dollar-risk, not matched request-for-request — see `DAILY_CAPS`
+in `legal_rate_limiter.py`). Layer 1's per-model check is per-*minute* and
+resets every window, so it bounds burst rate, not daily spend; this one
+doesn't reset until the full 24h window elapses. One dict of per-provider
+limits (not a Qwen-specific function, as first built) so a future
+provider's cap is a one-line addition to `DAILY_CAPS`, not a new
+copy-pasted function+exception pair — `reserve_daily()` is a no-op for any
+provider not in that dict (Mistral has Layer 2's shared-key budget
+instead; OpenAI has neither). `app.py` calls it unconditionally, right
+after the Mistral-only Layer 2 check. `DailyLimitExceeded` subclasses
 `rate_limiter.RateLimitExceeded` the same way Layer 1's two exceptions do,
-so it gets the same 429 treatment via the existing handler — verified
-directly against the limiter (100 reservations succeed, the 101st raises
-with the expected message and a 24h `retry_after`), not smoke-tested via
-100 real paid Qwen calls.
+so it gets the same 429 treatment via the existing handler.
+
+Verified directly against the limiter for all four providers (Qwen: 100
+reservations succeed, 101st rejected; Anthropic: 20 succeed, 21st
+rejected; Mistral/OpenAI: 500 calls each, correctly never rejected by this
+layer) plus one real end-to-end smoke test of the Anthropic provider
+itself against a live key (full structured review returned correctly,
+including catching the contract's undefined "Effective Date" and its
+missing governing-law/dispute-resolution boilerplate — issues neither
+Mistral nor Qwen flagged in the same side-by-side comparison). Not
+smoke-tested via 100/20 real paid calls specifically to trip each cap.
 
 Same caveat as everything else in these two modules: in-memory, resets on
 every server restart/deploy — not a substitute for a real spend/quota cap
-set directly on the DashScope/Model Studio console, which is the one
-backstop that survives a code bug or a restart.
+set directly on each provider's own console (DashScope/Model Studio for
+Qwen, the Anthropic Console's prepaid credit balance for Anthropic — the
+user is running that as $5 prepaid with auto-reload off, which is itself
+a meaningful backstop independent of anything in this file).
 
 ## File parsing
 
@@ -174,11 +187,12 @@ plus `QWEN_BASE_URL` (optional — see the workspace-scoped-host note above).
 
 ## Known gaps / next steps
 
-- OpenAI and Anthropic call shapes are verified against the installed SDK's
-  method signatures, not a live end-to-end call (no API keys available in
-  this environment when built) — worth a real smoke test with actual keys
-  before relying on this in front of anyone else. Qwen *has* been
-  smoke-tested end-to-end (see above).
+- OpenAI's call shape is verified against the installed SDK's method
+  signature only, not a live end-to-end call (no key available for it) —
+  worth a real smoke test before relying on it in front of anyone else.
+  Qwen and Anthropic *have* both been smoke-tested end-to-end against live
+  keys (see Layer 3 above) — full structured reviews returned correctly
+  for both.
   Qwen model naming moves fast (versioned `qwen3.x-plus`/`-max`/`-flash`
   variants alongside the unversioned `qwen-plus` alias used here) — if
   `call_qwen_review` 400s on an unrecognized model, check
