@@ -31,8 +31,8 @@ sys.path.insert(0, str(WEBAPP_DIR))  # so `import llm` (webapp/llm.py) resolves
 import sqlite_shim  # noqa: E402,F401  (must precede `import chromadb` — see module docstring)
 import chromadb  # noqa: E402
 import numpy as np  # noqa: E402
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile  # noqa: E402
-from fastapi.responses import JSONResponse  # noqa: E402
+from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile  # noqa: E402
+from fastapi.responses import FileResponse, JSONResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 
@@ -44,6 +44,7 @@ from ingest import get_collection  # noqa: E402
 from loader import load_documents  # noqa: E402
 from query import search  # noqa: E402
 
+import cf_access  # noqa: E402
 import legal_rate_limiter  # noqa: E402
 import legal_review  # noqa: E402
 import llm  # noqa: E402
@@ -398,6 +399,47 @@ def api_corpus_document(source: str):
         raise HTTPException(status_code=404, detail=f"No such document: {source}")
     text = docs[source]
     return {"source": source, "title": _doc_title(text) or source, "text": text}
+
+
+# --- admin (Cloudflare Access protected) ---------------------------------
+#
+# See webapp/cf_access.py and CONTEXT-admin-auth.md for the full design.
+# Every route below independently requires a verified Cloudflare Access
+# identity - never just the /admin page having been reached first. The
+# router-level `dependencies=` means any future admin route added to
+# `admin_router` is covered automatically, even if its own definition
+# forgets to add the check.
+
+admin_router = APIRouter(prefix="/api/admin", dependencies=[Depends(cf_access.require_admin)])
+
+
+@admin_router.get("/whoami")
+def admin_whoami(identity: dict = Depends(cf_access.require_admin)):
+    return identity
+
+
+@admin_router.post("/ping")
+def admin_ping(identity: dict = Depends(cf_access.require_admin)):
+    """Stub privileged action - proves a mutation-style admin call round
+    trips end to end. Replace/extend with real admin operations as they're
+    built; each new one just joins this router.
+    """
+    return {"status": "ok", "by": identity["email"]}
+
+
+app.include_router(admin_router)
+
+ADMIN_STATIC_DIR = WEBAPP_DIR / "admin_static"
+
+
+@app.get("/admin", dependencies=[Depends(cf_access.require_admin)])
+def admin_page():
+    """Placeholder admin UI. Lives outside webapp/static/ (which is
+    mounted wholesale, unauthenticated, below) so there's no unguarded
+    file URL serving the same content - this route is the only way to
+    reach it, and it carries the same guard as the APIs it calls.
+    """
+    return FileResponse(ADMIN_STATIC_DIR / "admin.html")
 
 
 # Serve the frontend. Mounted last so it doesn't shadow the /api/* routes
