@@ -313,11 +313,16 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-@app.post("/api/legal-review")
+@app.post("/api/legal-review", dependencies=[Depends(cf_access.require_admin)])
 async def api_legal_review(request: Request, file: UploadFile = File(...), provider: str = Form(...)):
     """Legal Assistant: upload a contract, get back a structured review.
     See webapp/legal_review.py for the model-agnostic review logic - this
     endpoint is just upload handling + error-status mapping.
+
+    Admin-only (see cf_access.py) - the Legal Assistant page itself
+    (/legal.html, below) is admin-gated the same way, but this endpoint
+    guards itself independently rather than trusting that the page was
+    reached legitimately, same reasoning as every /api/admin/* route.
     """
     if provider not in legal_review.PROVIDERS:
         raise HTTPException(
@@ -429,17 +434,28 @@ def admin_ping(identity: dict = Depends(cf_access.require_admin)):
 
 app.include_router(admin_router)
 
-ADMIN_STATIC_DIR = WEBAPP_DIR / "admin_static"
+# Static files that require the same admin guard - never placed under
+# webapp/static/ (mounted wholesale, unauthenticated, below), so there's
+# no unguarded file URL serving the same content. Each gets its own
+# explicit route, registered (like these) before the wholesale mount.
+PROTECTED_STATIC_DIR = WEBAPP_DIR / "protected_static"
 
 
 @app.get("/admin", dependencies=[Depends(cf_access.require_admin)])
 def admin_page():
-    """Placeholder admin UI. Lives outside webapp/static/ (which is
-    mounted wholesale, unauthenticated, below) so there's no unguarded
-    file URL serving the same content - this route is the only way to
-    reach it, and it carries the same guard as the APIs it calls.
+    """Placeholder admin UI - see PROTECTED_STATIC_DIR's comment above."""
+    return FileResponse(PROTECTED_STATIC_DIR / "admin.html")
+
+
+@app.get("/legal.html", dependencies=[Depends(cf_access.require_admin)])
+def legal_page():
+    """Legal Assistant page - admin-only (its own cost-bearing endpoint,
+    /api/legal-review above, guards itself independently too). Still
+    linked from the public landing page (index.html) - everyone can see
+    the card and click it, only an authenticated admin gets past the
+    Cloudflare Access login this triggers.
     """
-    return FileResponse(ADMIN_STATIC_DIR / "admin.html")
+    return FileResponse(PROTECTED_STATIC_DIR / "legal.html")
 
 
 # Serve the frontend. Mounted last so it doesn't shadow the /api/* routes
