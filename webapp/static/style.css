@@ -13,6 +13,14 @@
 
 * { box-sizing: border-box; }
 
+/* The [hidden] attribute's default UA-stylesheet "display: none" loses to
+   any author rule that sets `display` on the same element (e.g.
+   .chat-toolbar's `display: flex`), even at equal specificity - author
+   styles beat the UA stylesheet regardless. Restating it here, in an
+   author rule, makes `el.hidden = true` reliably hide the element
+   app-wide instead of only on elements with no competing `display`. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--bg);

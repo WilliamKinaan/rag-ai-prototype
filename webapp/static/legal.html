@@ -33,11 +33,15 @@
           <option value="mistral" selected>Mistral (ministral-8b)</option>
           <option value="openai">OpenAI (gpt-4o-mini)</option>
           <option value="anthropic">Anthropic (Claude Sonnet 5)</option>
+          <option value="qwen">Qwen (qwen-plus)</option>
           <option value="gemini">Gemini (not yet supported)</option>
         </select>
         <button id="review-btn">Analyze</button>
       </div>
       <div id="review-error"></div>
+      <div id="review-toolbar" class="chat-toolbar" hidden>
+        <button id="download-btn" class="btn-secondary" type="button">⬇ Download report</button>
+      </div>
       <div id="review-output" class="output"></div>
     </section>
   </main>
