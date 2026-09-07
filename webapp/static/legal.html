@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Legal Assistant</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="disclaimer">
+    ⚠️ <strong>Testing prototype — not legal advice.</strong> This demo sends
+    your uploaded document to a third-party hosted model. Its output is
+    illustrative, may be incomplete or wrong, and must never be used as a
+    substitute for advice from a qualified lawyer. Do not upload confidential
+    documents you aren't comfortable sending to that provider.
+  </div>
+
+  <header>
+    <p class="back-link"><a href="/">← Back to home</a></p>
+    <h1>Legal Assistant</h1>
+    <p class="subtitle">
+      Upload a contract and pick a model. It reviews the document section by
+      section and flags passages that may need a lawyer's attention, with a
+      suggested fix for each.
+    </p>
+  </header>
+
+  <main>
+    <section id="review" class="step">
+      <div class="upload-row">
+        <input id="contract-file" type="file" accept=".txt,.md,.pdf,.docx" />
+        <select id="provider-select">
+          <option value="mistral" selected>Mistral (ministral-8b)</option>
+          <option value="openai">OpenAI (gpt-4o-mini)</option>
+          <option value="anthropic">Anthropic (Claude Sonnet 5)</option>
+          <option value="qwen">Qwen (qwen-plus)</option>
+          <option value="gemini">Gemini (not yet supported)</option>
+        </select>
+        <button id="review-btn">Analyze</button>
+      </div>
+      <div id="review-error"></div>
+      <div id="review-toolbar" class="chat-toolbar" hidden>
+        <button id="download-btn" class="btn-secondary" type="button">⬇ Download report</button>
+      </div>
+      <div id="review-output" class="output"></div>
+    </section>
+  </main>
+
+  <script>window.SUPPRESS_RATE_LIMIT_BADGE = true;</script>
+  <script src="/common.js"></script>
+  <script src="/legal.js"></script>
+</body>
+</html>
