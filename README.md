@@ -53,3 +53,47 @@ src/query.py      retrieve(query, k) -> ranked chunks; also --eval mode
 
 `retrieve(query, k)` in `src/query.py` is the seam a future generation
 (Mistral) layer will wrap — nothing else here assumes an LLM exists.
+
+## Web demo (webapp/)
+
+A FastAPI app wraps this pipeline plus a separate **Legal Assistant**
+(contract review) feature — see `CONTEXT-webapp.md` and
+`CONTEXT-legal-assistant.md` for the full design/status of each.
+
+```bash
+source rag-env/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # fill in the API key(s) you need, see below
+
+uvicorn webapp.app:app --reload --port 8000
+```
+
+Then open:
+- http://localhost:8000/ — landing page
+- http://localhost:8000/rag.html — the V1 RAG chat/search/explore demo
+- http://localhost:8000/legal.html — Legal Assistant (upload a contract,
+  pick a model, get a structured review with a "Download report" button)
+
+**API keys** (`.env`, see `.env.example`): `MISTRAL_API_KEY` powers both the
+RAG demo's chat and the Legal Assistant's "Mistral" dropdown option;
+`OPENAI_API_KEY` / `ANTHROPIC_API_KEY` are only needed for the matching
+Legal Assistant dropdown options — leave any of the three blank and just
+avoid picking that option (it errors clearly if you do). A quick way to
+test the Legal Assistant end-to-end with a free key is Mistral; there's a
+sample contract to upload at `samples/sample-contract-with-issues.txt`.
+
+**Fast local startup — `SKIP_RAG_INDEX`:** normal startup loads the ~2GB
+`bge-m3` embedding model and encodes the whole corpus before the server
+accepts requests (~40-60s on a CPU-only machine). If you're only testing
+the Legal Assistant page (it doesn't touch the RAG index at all), skip
+that build entirely:
+
+```bash
+SKIP_RAG_INDEX=1 uvicorn webapp.app:app --reload --port 8000
+```
+
+This brings startup down to ~5-6s. With it set, the RAG demo's pages/API
+routes return a clean 503 instead of working — only use it when you don't
+need those. It's an inline env var, not read from `.env`, so it can't
+accidentally leak into a real deploy; **never set it there**. See
+`CONTEXT-webapp.md` for details.
