@@ -66,6 +66,51 @@ class IPRateLimitExceeded(RateLimitExceeded):
         )
 
 
+# --- Qwen-only daily cap (Layer 3) -----------------------------------------
+#
+# Unlike the two limiters above, this one bounds *daily total spend*, not
+# burst rate: PER_MODEL_MAX_REQUESTS resets every minute, so a steady stream
+# of requests all day still passes through it every single window. Added on
+# direct request once Qwen became a real per-token cost on a live site (see
+# CONTEXT-legal-assistant.md) - it's a cost circuit breaker shared across
+# every visitor combined, not a per-user throttle, and deliberately
+# Qwen-only rather than a generic per-provider knob: Qwen is the one
+# provider here without any other cost guardrail (Mistral has
+# rate_limiter.py's shared-key budget; OpenAI/Anthropic weren't part of
+# this ask). Same in-memory/resets-on-restart caveat as everything else in
+# this module - not a substitute for a real spend cap on the DashScope
+# console itself.
+QWEN_DAILY_MAX_REQUESTS = 100
+QWEN_DAILY_WINDOW_SECONDS = 24 * 60 * 60.0
+
+_qwen_daily_limiter = _FixedWindowLimiter(QWEN_DAILY_MAX_REQUESTS, QWEN_DAILY_WINDOW_SECONDS)
+
+
+class QwenDailyLimitExceeded(RateLimitExceeded):
+    """The daily cap on total Qwen legal-review calls (all visitors
+    combined) has been reached."""
+
+    def __init__(self, retry_after: float):
+        self.retry_after = retry_after
+        hours = max(1, round(retry_after / 3600))
+        Exception.__init__(
+            self,
+            f"The daily limit of {QWEN_DAILY_MAX_REQUESTS} Qwen legal-review "
+            f"requests (shared across all visitors) has been reached. Please "
+            f"try again in about {hours} hour(s), or pick a different model.",
+        )
+
+
+def reserve_qwen_daily() -> None:
+    """Reserve one request against the Qwen daily cap, or raise. Call this
+    in addition to (after) reserve() above, only for provider == "qwen" -
+    see app.py."""
+    try:
+        _qwen_daily_limiter.reserve(1)
+    except RateLimitExceeded as e:
+        raise QwenDailyLimitExceeded(e.retry_after) from e
+
+
 # One limiter per provider name, created lazily on first use so this module
 # doesn't need its own copy of legal_review.PROVIDERS' key list - an unknown
 # provider getting its own limiter here is harmless, since app.py already

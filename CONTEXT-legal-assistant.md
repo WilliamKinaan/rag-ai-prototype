@@ -36,11 +36,14 @@ The sheet's Phase 1 explicitly asks to "test multiple hosted models
 (OpenAI/Anthropic/Mistral/Gemini)". Rather than hardcode one, `legal.html`
 exposes a dropdown, and `webapp/legal_review.py` has one call function per
 provider behind a single `review_contract(provider, text)` dispatcher.
-Gemini is listed in the dropdown as "not yet supported" (no existing
-precedent in this repo, no key) — picking it gets a clean 400 from
-`webapp/app.py` ("'gemini' is not yet supported. Choose one of: ...")
-rather than pretending it works; the dispatcher pattern makes actually
-wiring it up later a matter of one more function + one more registry entry.
+Qwen (Alibaba Cloud) was added the same way, outside the sheet's original
+four — not on the roadmap, added on direct user request. Gemini is still
+listed in the dropdown as "not yet supported" (no existing precedent in
+this repo, no key) — picking it gets a clean 400 from `webapp/app.py`
+("'gemini' is not yet supported. Choose one of: ...") rather than
+pretending it works; the dispatcher pattern makes actually wiring it up
+later a matter of one more function + one more registry entry (as Qwen's
+addition demonstrated).
 
 Mistral is the **default** selection — not because it's the best output, but
 because it's the only provider with a key already configured in this repo's
@@ -69,6 +72,26 @@ a 500, since the dropdown makes this a user-selectable outcome.
 - **Mistral**: no SDK, raw `httpx` matching `webapp/llm.py`'s existing style
   and reusing its `MISTRAL_API_URL`/`MISTRAL_MODEL_NAME` constants. Schema is
   prompt-enforced only (see above).
+- **Qwen**: no dedicated `dashscope` SDK dependency — reuses the `openai`
+  client already installed for OpenAI, pointed at DashScope's
+  OpenAI-compatible endpoint, model `"qwen-plus"`.
+  `response_format={"type": "json_object"}` is passed (DashScope's
+  json_object mode, which requires the literal word "json" somewhere in
+  the prompt — already true of the shared schema-hint message) but, like
+  Mistral, isn't trusted to enforce the *exact* schema — same
+  prompt-enforced + lenient-parse path as Mistral, not OpenAI/Anthropic's
+  `.parse()`. **Smoke-tested end-to-end with a live key** — full structured
+  review returned correctly.
+
+  Unlike the other three providers, DashScope's compatible-mode host isn't
+  one fixed public URL — it's workspace- and region-scoped (e.g. a
+  Germany/`eu-central-1` workspace gets its own
+  `https://<workspace-id>.eu-central-1.maas.aliyuncs.com/compatible-mode/v1`
+  host, shown on the Model Studio console's API Key page next to the key
+  itself). `call_qwen_review()` reads that from an optional `QWEN_BASE_URL`
+  env var, falling back to the generic international host
+  (`dashscope-intl.aliyuncs.com`) if unset — which may or may not work,
+  depending on the account/workspace.
 
 `ContractReview`/`ReviewSection`/`Issue` (Pydantic models in
 `webapp/legal_review.py`) are the one schema all three providers target.
@@ -106,6 +129,28 @@ Layer 2's Mistral-only budget, which is meaningless context on a page where
 the active call might be to a different provider entirely. `legal.html`
 sets `window.SUPPRESS_RATE_LIMIT_BADGE = true` before loading `common.js`.
 
+**Layer 3 — Qwen-only daily cap** (`legal_rate_limiter.py`'s
+`reserve_qwen_daily()`, new): at most **100 Qwen requests/day, shared
+across every visitor** — a cost circuit-breaker, added on direct request
+once Qwen became a real per-token cost on a live site. Layer 1's per-model
+check is per-*minute* and resets every window, so it bounds burst rate, not
+daily spend; this one doesn't reset until the full 24h window elapses.
+Qwen-only rather than a generic per-provider knob, since Qwen was the one
+provider here with no other cost guardrail (Mistral has Layer 2's
+shared-key budget above; OpenAI/Anthropic weren't part of this ask).
+`app.py` calls it right after the Mistral-only Layer 2 check, only when
+`provider == "qwen"`. `QwenDailyLimitExceeded` subclasses
+`rate_limiter.RateLimitExceeded` the same way Layer 1's two exceptions do,
+so it gets the same 429 treatment via the existing handler — verified
+directly against the limiter (100 reservations succeed, the 101st raises
+with the expected message and a 24h `retry_after`), not smoke-tested via
+100 real paid Qwen calls.
+
+Same caveat as everything else in these two modules: in-memory, resets on
+every server restart/deploy — not a substitute for a real spend/quota cap
+set directly on the DashScope/Model Studio console, which is the one
+backstop that survives a code bug or a restart.
+
 ## File parsing
 
 `webapp/legal_review.extract_text()` dispatches on the upload's file
@@ -121,16 +166,23 @@ silently dropping content.
 ## New dependencies
 
 `webapp/requirements.txt` gained `python-multipart` (required for FastAPI's
-`UploadFile`/`Form`), `pypdf`, `python-docx`, `anthropic`, `openai`.
-`.env.example` gained `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` (each optional —
-only needed if that dropdown option is actually selected).
+`UploadFile`/`Form`), `pypdf`, `python-docx`, `anthropic`, `openai`. Qwen
+added no new dependency — it reuses the already-installed `openai` package.
+`.env.example` gained `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `QWEN_API_KEY`
+(each optional — only needed if that dropdown option is actually selected)
+plus `QWEN_BASE_URL` (optional — see the workspace-scoped-host note above).
 
 ## Known gaps / next steps
 
 - OpenAI and Anthropic call shapes are verified against the installed SDK's
   method signatures, not a live end-to-end call (no API keys available in
   this environment when built) — worth a real smoke test with actual keys
-  before relying on this in front of anyone else.
+  before relying on this in front of anyone else. Qwen *has* been
+  smoke-tested end-to-end (see above).
+  Qwen model naming moves fast (versioned `qwen3.x-plus`/`-max`/`-flash`
+  variants alongside the unversioned `qwen-plus` alias used here) — if
+  `call_qwen_review` 400s on an unrecognized model, check
+  help.aliyun.com/en/model-studio for current IDs.
 - Layer 1's per-IP dict (`legal_rate_limiter.py`) is never evicted — fine
   for a prototype, would need cleanup/expiry before real traffic.
 - No contract-category classification, no benchmark harness — both are
