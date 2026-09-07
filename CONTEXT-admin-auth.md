@@ -11,18 +11,21 @@ step 7) before their first successful login.
 
 ## What this is
 
-There is no admin *feature* in this app yet — this lays the security
-architecture ahead of one: a minimal placeholder `/admin` page and two
-representative `/api/admin/*` endpoints, all protected by
+The security architecture for an admin area: a minimal placeholder
+`/admin` page and two representative `/api/admin/*` endpoints, plus one
+real gated feature (`/legal.html` + `/api/legal-review`, the app's one
+cost-bearing endpoint) — all protected by
 [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/),
 with authentication/MFA handled entirely by Cloudflare rather than any
-custom login system in this app. Real admin features get built on `/admin`
-and `/api/admin/*` later; they inherit this protection automatically as
-long as they're added the way this doc describes (see "Adding a new admin
-route").
+custom login system in this app. Further admin features get built on
+`/admin` and `/api/admin/*`; they inherit this protection automatically
+as long as they're added the way this doc describes (see "Adding a new
+admin route").
 
-The rest of the app (`/`, `/api/query`, `/api/chat`, `/api/legal-review`,
-`/api/corpus`, …) is unaffected and stays public.
+The rest of the app (`/`, `/api/query`, `/api/chat`, `/api/corpus`, …) is
+unaffected and stays public — including the landing page's link to
+`/legal.html` itself (see §2): everyone can see the card, only an
+authenticated admin gets past the login it now triggers.
 
 ## 1. How the auth flow works
 
@@ -56,9 +59,21 @@ The rest of the app (`/`, `/api/query`, `/api/chat`, `/api/legal-review`,
 | `/admin` | GET | `Depends(cf_access.require_admin)` directly on the route |
 | `/api/admin/whoami` | GET | via `admin_router`'s `dependencies=` |
 | `/api/admin/ping` | POST | via `admin_router`'s `dependencies=` |
+| `/legal.html` | GET | `Depends(cf_access.require_admin)` directly on the route |
+| `/api/legal-review` | POST | `Depends(cf_access.require_admin)` directly on the route |
 
 `whoami` and `ping` are placeholders proving the pattern end-to-end (one
 read, one privileged/mutating-style call) — not real admin features yet.
+
+`/legal.html` (the Legal Assistant page) and its backend,
+`/api/legal-review`, are the first real feature gated this way — made
+admin-only because it's the app's one cost-bearing endpoint (spends real
+Mistral/OpenAI/Anthropic/Qwen budget per call). The card linking to it on
+the public landing page (`index.html`) is left as-is and still visible to
+everyone; only reaching the page/API itself requires an authenticated
+admin. Both guard independently — `/api/legal-review` doesn't trust that
+a caller came through `/legal.html` first, same reasoning as every
+`/api/admin/*` route.
 
 **Adding a new admin route**: add it to `admin_router`
 (`webapp/app.py`) rather than `app` directly. The router's
@@ -70,11 +85,14 @@ a new top-level page like `/admin/something`), give it its own
 having been visited first, since API/page routes are directly callable
 without it.
 
-Also note: `webapp/admin_static/admin.html` (the file `/admin` serves)
-deliberately does **not** live under `webapp/static/`, which is mounted
-wholesale and unauthenticated at `/`. Anything meant to be admin-only
-must not be placed there, or it becomes reachable by filename with no
-check at all.
+Also note: `webapp/protected_static/` (holds `admin.html` and
+`legal.html`, the files `/admin` and `/legal.html` serve) deliberately
+does **not** live under `webapp/static/`, which is mounted wholesale and
+unauthenticated at `/`. Anything meant to be admin-only must not be
+placed there, or it becomes reachable by filename with no check at all -
+shared assets those pages still need (`style.css`, `common.js`,
+`legal.js` - no secrets in any of them) stay in `webapp/static/`, since
+only the HTML entry point itself needs gating.
 
 ## 3. How server-side verification is performed
 
@@ -140,7 +158,7 @@ allowlist.
 ## 5. Cloudflare dashboard configuration (to be done by the account owner)
 
 Done, as of this writing — one Access Application, one policy, covering
-both paths. For reference (or if it's ever recreated from scratch):
+four paths. For reference (or if it's ever recreated from scratch):
 
 1. **Note the team domain.** Zero Trust → Settings, or any Access page
    shows it, e.g. `yourteam.cloudflareaccess.com`. → `CF_ACCESS_TEAM_DOMAIN`.
@@ -153,16 +171,24 @@ both paths. For reference (or if it's ever recreated from scratch):
    for the full list of things a rename *can* affect, e.g. any custom
    OAuth IdP's redirect URI — not applicable here since none are used.)
 2. **Create one self-hosted Application** (Access controls → Applications
-   → Add an application) with two public-hostname destinations, since a
+   → Add an application) with public-hostname destinations, since a
    single Application supports multiple destination rows:
    - `rag.williamkinaan.com/admin`
    - `rag.williamkinaan.com/api/admin*`
+   - `rag.williamkinaan.com/legal.html`
+   - `rag.williamkinaan.com/api/legal-review`
 
    Give it a **Policy** → Action **Allow**, Include → **Emails** → the two
    authorized users' addresses, no other include rule — that's the entire
-   authorization surface at the edge (currently reuses a policy named
-   "Legal assistance", a leftover name from elsewhere in the account; the
-   name doesn't matter, its Include list is what does).
+   authorization surface at the edge (the policy is named "Legal
+   assistance" — coincidentally apt now that it also covers the Legal
+   Assistant page, but the name is cosmetic; its Include list is what
+   matters). Adding `/legal.html` and `/api/legal-review` as destinations
+   here is what makes an unauthenticated visit to either redirect to
+   Cloudflare's login (like `/admin` does) instead of just hitting the
+   app's own bare 401 — the app-side guard in `cf_access.py` protects
+   both either way, this only affects whether the edge intercepts first
+   for a proper login experience.
 3. **Copy the Application's AUD tag** — its **Additional settings** tab →
    "Application Audience (AUD) Tag" (not the Overview page — easy to miss)
    → `CF_ACCESS_AUD`. (If a path is ever split into a second Application
