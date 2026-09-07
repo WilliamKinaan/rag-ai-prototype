@@ -1,10 +1,12 @@
 # Context: Admin auth (Cloudflare Access)
 
 _Last updated: 2026-09-07_
-**Status: implemented (code side) — Cloudflare dashboard configuration not
-yet done.** Until that's done, every admin route fails closed (401) for
-everyone, including the two intended admin users — this is expected, not
-a bug (see "Fails closed when unconfigured" below).
+**Status: Cloudflare Access Application + policy created in the dashboard
+(one Application, "rag", covering both `/admin*` and `/api/admin*`,
+policy restricted to the two admin emails); server env vars not yet set.**
+Until they are, every admin route fails closed (401) for everyone,
+including the two intended admin users — this is expected, not a bug
+(see "Fails closed when unconfigured" below).
 
 ## What this is
 
@@ -38,11 +40,13 @@ The rest of the app (`/`, `/api/query`, `/api/chat`, `/api/legal-review`,
    holds for its Access session.
 4. **This app independently re-verifies that JWT on every privileged
    request** (`webapp/cf_access.py`, `require_admin`) — signature, issuer,
-   audience, expiry, then the identity's email against a server-side
-   allowlist. It does **not** trust "this request reached me" as proof of
-   authorization; step 2 happens at Cloudflare's edge, entirely outside
-   this app's control or visibility, so nothing here assumes it happened
-   correctly. See §3 for why this matters concretely.
+   audience, expiry, all against Cloudflare's own published keys. It does
+   **not** trust "this request reached me" as proof of authorization;
+   step 2 happens at Cloudflare's edge, entirely outside this app's
+   control or visibility, so nothing here assumes it happened correctly.
+   See §3 for why this matters concretely, and for why *who's allowed* is
+   still decided entirely by Cloudflare's policy rather than a second
+   check in this app.
 
 ## 2. Which routes/actions are protected
 
@@ -85,10 +89,18 @@ check at all.
    the team domain, and the token isn't expired. Any failure (bad
    signature, wrong `aud`/`iss`, expired, or even a transient JWKS-fetch
    error) → **401**.
-3. Checks the token's `email` claim against `ADMIN_ALLOWED_EMAILS` — a
-   second, server-side check on top of Cloudflare's own policy, not a
-   replacement for it. Not present or not allowlisted → **403**.
-4. Only if all of the above pass does the route handler run.
+3. Only if all of the above pass does the route handler run.
+
+There is deliberately **no separate email allowlist in the app** — see
+`webapp/cf_access.py`'s module docstring. Authorization is delegated
+entirely to the Cloudflare Access policy on the Application (Include →
+Emails → the two admin addresses): a token bearing the right `aud` could
+only have been issued to a visitor that policy already approved, so a
+second local copy of the same two emails would just be a second source
+of truth to keep in sync. The trade-off, made deliberately: if that
+Cloudflare policy is ever loosened by mistake, nothing in this app would
+catch it — the app trusts the Application's policy completely. If that
+stops being acceptable, add the check back in `require_admin`.
 
 If `CF_ACCESS_TEAM_DOMAIN`/`CF_ACCESS_AUD` aren't set at all, every admin
 request gets **401** immediately — see "Fails closed when unconfigured".
@@ -105,41 +117,52 @@ in depth, but this design doesn't depend on it.
 
 ## 4. Environment variables / secrets required
 
-Added to `.env.example`; all three are required together — any one
-missing means every admin route 401s:
+Added to `.env.example`; both are required together — either missing
+means every admin route 401s:
 
 | Variable | What it is | Where it comes from |
 |---|---|---|
 | `CF_ACCESS_TEAM_DOMAIN` | Zero Trust team domain, no scheme (e.g. `yourteam.cloudflareaccess.com`) | Zero Trust dashboard — shown throughout, e.g. Settings → Custom Pages |
-| `CF_ACCESS_AUD` | Comma-separated Access Application "Audience" tag(s) | Access → Applications → (your app) → Overview, after creating it |
-| `ADMIN_ALLOWED_EMAILS` | Comma-separated emails of the authorized admins | Whatever emails the two admins actually sign in with |
+| `CF_ACCESS_AUD` | Comma-separated Access Application "Audience" tag(s) | Access controls → Applications → (your app) → **Additional settings** tab → "Application Audience (AUD) Tag" |
 
-None of these are secrets in the traditional sense (they're not usable to
+Neither is a secret in the traditional sense (they're not usable to
 authenticate as anyone — they only narrow what an *already-Cloudflare-
 verified* token is accepted for), but they still control access, so treat
 them with the same care as the other keys already in `.env` (not
 committed; see `.env.example`'s existing convention).
 
+Who's actually allowed to sign in at all is controlled entirely by the
+Access Application's **policy** in the dashboard (Include → Emails), not
+by anything in `.env` — see §3 for why there's no separate app-side
+allowlist.
+
 ## 5. Cloudflare dashboard configuration (to be done by the account owner)
 
-Nothing is configured yet — this needs to happen once, in the Cloudflare
-Zero Trust dashboard:
+Done, as of this writing — one Access Application, one policy, covering
+both paths. For reference (or if it's ever recreated from scratch):
 
 1. **Note the team domain.** Zero Trust → Settings, or any Access page
    shows it, e.g. `yourteam.cloudflareaccess.com`. → `CF_ACCESS_TEAM_DOMAIN`.
-2. **Create two Access Applications** (self-hosted), since `/admin*` and
-   `/api/admin*` don't share a path prefix:
-   - Domain `rag.williamkinaan.com`, path `/admin*`
-   - Domain `rag.williamkinaan.com`, path `/api/admin*`
+   (This account's: `bitter-smoke-8a9f.cloudflareaccess.com`.)
+2. **Create one self-hosted Application** (Access controls → Applications
+   → Add an application) with two public-hostname destinations, since a
+   single Application supports multiple destination rows:
+   - `rag.williamkinaan.com/admin`
+   - `rag.williamkinaan.com/api/admin*`
 
-   For each: **Policy** → Action **Allow**, Include → **Emails** → the two
-   authorized users' addresses. No other include rule — this is the
-   entire authorization surface at the edge.
-3. **Copy each Application's AUD tag** (its Overview tab, after saving) —
-   put both into `CF_ACCESS_AUD`, comma-separated.
-4. **Set the three env vars on the server**, not just locally: SSH in and
-   add `CF_ACCESS_TEAM_DOMAIN=`, `CF_ACCESS_AUD=`, `ADMIN_ALLOWED_EMAILS=`
-   to `/home/opc/rag-prototype/.env` (that file isn't in the repo — see
+   Give it a **Policy** → Action **Allow**, Include → **Emails** → the two
+   authorized users' addresses, no other include rule — that's the entire
+   authorization surface at the edge (currently reuses a policy named
+   "Legal assistance", a leftover name from elsewhere in the account; the
+   name doesn't matter, its Include list is what does).
+3. **Copy the Application's AUD tag** — its **Additional settings** tab →
+   "Application Audience (AUD) Tag" (not the Overview page — easy to miss)
+   → `CF_ACCESS_AUD`. (If a path is ever split into a second Application
+   later, `CF_ACCESS_AUD` accepts a comma-separated list — one tag per
+   Application, all accepted.)
+4. **Set the two env vars on the server**, not just locally: SSH in and
+   add `CF_ACCESS_TEAM_DOMAIN=` and `CF_ACCESS_AUD=` to
+   `/home/opc/rag-prototype/.env` (that file isn't in the repo — see
    `CONTEXT-deploy-oracle.md`). **`deploy-oracle.sh` does not create or
    touch this file** — it only `git pull`s, installs deps, and restarts —
    so this is a manual, one-time step, needed before or right alongside
@@ -149,11 +172,11 @@ Zero Trust dashboard:
    let `deploy-oracle.sh` do it) after the `.env` edit so the new values
    are picked up.
 
-**Troubleshooting**: an empty/unset `ADMIN_ALLOWED_EMAILS` means 403 for
-*everyone*, including authorized users — that's the fail-closed design,
-not a bug; check it's actually set on the server. Cloudflare **service
-tokens** (non-interactive, no `email` claim — only `common_name`) will
-also 403 here by design; they're not treated as an admin identity.
+**Troubleshooting**: if a real admin still gets 401 after this, check the
+policy's Include list is actually the two admin emails (dashboard, not
+this repo), and that `CF_ACCESS_TEAM_DOMAIN`/`CF_ACCESS_AUD` on the
+server match what the Application actually shows — a stale/wrong AUD is
+the most common cause of "my login worked but the app still 401s".
 
 ## 6. Testing: direct calls rejected when unauthenticated
 
@@ -196,32 +219,30 @@ rejecting the request.
 
 Also confirmed as part of building this feature, no live Cloudflare
 needed: `python webapp/cf_access_selftest.py` exercises the verification
-logic itself (signature/`iss`/`aud`/`exp`/allowlist/multi-AUD) against a
-throwaway keypair — useful for regression-checking this file after any
-future change to it.
+logic itself (signature/`iss`/`aud`/`exp`/multi-AUD) against a throwaway
+keypair — useful for regression-checking this file after any future
+change to it.
 
 ## 7. Testing: authenticated but unauthorized is still rejected
 
-This checks that the server-side `ADMIN_ALLOWED_EMAILS` allowlist is a
-real, independent check — not just delegating entirely to Cloudflare's
-own policy. Do this against the **origin**, not the hostname — going
-through Cloudflare with a non-allowlisted email would already get
-blocked at the edge (by the Access policy itself), which doesn't prove
-this app's own check does anything:
+Since the app has no email allowlist of its own (§3/§4), "unauthorized"
+here means *not on the Access Application's policy* — and that's enforced
+entirely by Cloudflare, before a token is ever issued for this app's
+`aud`. There's nothing to test app-side; the check to make is that
+Cloudflare itself actually blocks such a user, rather than assuming it:
 
-1. In the Cloudflare Access policy (either Application from §5),
-   temporarily add a third test email — one **not** in
-   `ADMIN_ALLOWED_EMAILS`.
-2. Sign in as that user through `https://rag.williamkinaan.com/admin` in
-   a browser (passes Cloudflare's own login/MFA — Access's policy allows
-   them through to the app).
-3. Open devtools → Application/Storage → cookies for
-   `rag.williamkinaan.com`, copy the `CF_Authorization` cookie value.
-4. Replay it directly against the origin, skipping Cloudflare:
-   ```bash
-   curl -i -H "Cookie: CF_Authorization=<value>" http://134.98.154.12:8000/api/admin/whoami
-   ```
-5. Expect **403** — this app's own allowlist check is what's rejecting
-   it, not Cloudflare's policy (which already let this token through once
-   at the edge).
-6. Remove the test email from the Cloudflare policy afterward.
+1. Sign in to Cloudflare (any account, e.g. a personal one) with an email
+   that's genuinely **not** in the "Legal assistance" policy's Include
+   list.
+2. Visit `https://rag.williamkinaan.com/admin`.
+3. Expect Cloudflare's own **"Access Denied"** page — the visitor never
+   gets redirected back to the app at all, meaning no token bearing this
+   Application's `aud` was ever issued to them. There's no origin-side
+   equivalent to test here (unlike §6b): without a token, they have
+   nothing to replay against the origin in the first place.
+
+If a non-policy user instead *does* reach `/admin` or gets a token, that
+means the Cloudflare policy itself is misconfigured (too broad an
+Include rule, or the Application no longer requires identity) — fix it
+in the dashboard, not in this codebase, since that's the single source
+of truth this design deliberately relies on (see §3).

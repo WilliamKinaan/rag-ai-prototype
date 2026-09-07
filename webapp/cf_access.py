@@ -13,10 +13,22 @@ requests, rather than trusting "this request reached me at all" to mean it
 was authorized. See CONTEXT-admin-auth.md for the full design and the
 Cloudflare dashboard configuration this depends on.
 
+Authorization is delegated entirely to the Cloudflare Access policy on
+this Application (Include -> Emails -> the two admin addresses) - this
+module only checks that a request carries a token Cloudflare actually
+issued *for this Application specifically* (via the `aud` check below),
+never re-checks the identity against a separate local list. That's a
+deliberate choice, not an oversight: a token with the right `aud` could
+only have been minted by a visitor the Cloudflare policy already let
+through, so re-listing the same emails here would just be a second copy
+of the same source of truth, one that's easy to let drift out of sync.
+The trade-off: if that Cloudflare policy is ever loosened by mistake,
+nothing here would catch it. If that trade-off ever stops being
+acceptable, add the local allowlist check back in `require_admin` below.
+
 Fails closed throughout: a missing, malformed, expired, or badly-signed
-token, a wrong issuer/audience, or a valid token whose email isn't on the
-admin allowlist — all raise HTTPException. Nothing here silently lets a
-request through.
+token, or a wrong issuer/audience, all raise HTTPException. Nothing here
+silently lets a request through.
 """
 
 import os
@@ -50,12 +62,6 @@ JWKS_URL = f"https://{TEAM_DOMAIN}/cdn-cgi/access/certs" if TEAM_DOMAIN else ""
 # distinct AUD tag per Application — accept a token bearing any of them.
 AUD_LIST = [a.strip() for a in os.environ.get("CF_ACCESS_AUD", "").split(",") if a.strip()]
 
-ALLOWED_EMAILS = {
-    e.strip().lower()
-    for e in os.environ.get("ADMIN_ALLOWED_EMAILS", "").split(",")
-    if e.strip()
-}
-
 # PyJWKClient handles fetching + caching + rotating Cloudflare's signing
 # keys itself - no separate JWKS-fetch/cache code needed here. Built once
 # at import time; only constructed when a team domain is actually
@@ -80,7 +86,7 @@ def _extract_token(request: Request) -> str | None:
 
 def require_admin(request: Request) -> dict:
     """FastAPI dependency: verify the Cloudflare Access JWT on THIS
-    request and check the identity against the admin allowlist.
+    request.
 
     Add this as a per-route `Depends(require_admin)`, or via a router's
     `dependencies=[Depends(require_admin)]` so every route added to it is
@@ -88,8 +94,8 @@ def require_admin(request: Request) -> dict:
     reached first, since API routes are directly callable without it.
 
     Returns {"email": ..., "sub": ...} on success. Raises HTTPException
-    (401 for anything about the token itself, 403 for a valid token whose
-    identity isn't authorized) otherwise.
+    (401) for anything wrong with the token itself - see the module
+    docstring for why there's no separate 403/allowlist branch here.
     """
     if not TEAM_DOMAIN or not AUD_LIST:
         # Not configured - fail closed rather than silently accepting
@@ -123,11 +129,7 @@ def require_admin(request: Request) -> dict:
         # authorized".
         raise HTTPException(status_code=401, detail=f"Invalid Cloudflare Access token: {e}")
 
-    email = (claims.get("email") or "").strip().lower()
-    # Cloudflare service tokens (non-interactive, e.g. `common_name`
-    # claim instead of `email`) end up here with no email - rejected by
-    # design, since only the two named interactive users are authorized.
-    if not email or email not in ALLOWED_EMAILS:
-        raise HTTPException(status_code=403, detail="Not authorized for admin access.")
-
-    return {"email": email, "sub": claims.get("sub")}
+    # No further identity check here - see the module docstring. A token
+    # with the right `aud` could only have been issued to a visitor the
+    # Cloudflare Access policy on this Application already approved.
+    return {"email": claims.get("email"), "sub": claims.get("sub")}
