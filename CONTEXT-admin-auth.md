@@ -1,12 +1,13 @@
 # Context: Admin auth (Cloudflare Access)
 
 _Last updated: 2026-09-07_
-**Status: Cloudflare Access Application + policy created in the dashboard
-(one Application, "rag", covering both `/admin*` and `/api/admin*`,
-policy restricted to the two admin emails); server env vars not yet set.**
-Until they are, every admin route fails closed (401) for everyone,
-including the two intended admin users — this is expected, not a bug
-(see "Fails closed when unconfigured" below).
+**Status: fully configured and deployed.** Access Application + policy
+(restricted to the two admin emails, MFA required via authenticator app),
+App Launcher enabled with the same policy, server env vars set, and the
+full flow verified end to end (unauthenticated → Cloudflare login redirect;
+raw-IP direct → app-side 401; App Launcher → real login → MFA challenge).
+Each admin still needs to complete their own one-time MFA enrollment (§5
+step 7) before their first successful login.
 
 ## What this is
 
@@ -171,6 +172,21 @@ both paths. For reference (or if it's ever recreated from scratch):
 5. Restart the service (`sudo systemctl restart rag-prototype`, or just
    let `deploy-oracle.sh` do it) after the `.env` edit so the new values
    are picked up.
+6. **Enable the App Launcher** (Access controls → Access settings →
+   "Manage your App Launcher" → Manage) and attach the same "Legal
+   assistance" policy to it. Easy to miss: without this,
+   `<team-domain>.cloudflareaccess.com` shows a generic "contact your
+   administrator" page to everyone, including admins, regardless of the
+   Application/policy from step 2 being correct — the App Launcher is a
+   separate thing from the Application, with its own policy requirement.
+   (Confirmed by hitting this exact wall while setting this up: `/admin`
+   worked, but the App Launcher itself 404'd on "no policy associated"
+   until this was added.)
+7. **MFA, if the policy requires it** (see the policy's own Authentication
+   settings): each admin needs to enroll once, from the App Launcher's
+   **Account** page — scan the QR code into an authenticator app (Google
+   Authenticator, Authy, 1Password, etc.). Until enrolled, their next
+   login stops at a "Set up MFA now" screen instead of reaching the app.
 
 **Troubleshooting**: if a real admin still gets 401 after this, check the
 policy's Include list is actually the two admin emails (dashboard, not
