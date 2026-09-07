@@ -187,6 +187,26 @@ both paths. For reference (or if it's ever recreated from scratch):
    **Account** page — scan the QR code into an authenticator app (Google
    Authenticator, Authy, 1Password, etc.). Until enrolled, their next
    login stops at a "Set up MFA now" screen instead of reaching the app.
+8. **Add "One-Time PIN" as a login method** (Integrations → Identity
+   providers → Add an identity provider → One-Time PIN, one click, no
+   config). Another easy-to-miss gotcha: a brand-new Zero Trust account
+   only has **"Cloudflare"** (sign in with a real Cloudflare.com account)
+   available by default — despite the identity-providers page's own text
+   claiming "if you do not add an identity provider, a one-time pin will
+   be the default," that default didn't apply here in practice. Without
+   this step, the login screen offers only "Sign in with Cloudflare,"
+   which would wrongly require every admin to have their own Cloudflare
+   account. With it added, and the app set to "Accept all available
+   identity providers" (the default), visitors get a choice - "Cloudflare"
+   or "One-time PIN" (email + a code, no account) - and either path still
+   goes through the same policy's email check and MFA requirement
+   afterward. Deliberately **not** using Google/Microsoft/Facebook/
+   LinkedIn as login options here: each needs a real OAuth app registered
+   in that provider's own developer console (Client ID/Secret, redirect
+   URI config) for no security benefit over One-Time PIN, since the
+   policy checks the same two emails regardless of how they were proven -
+   skipped as unnecessary setup and maintenance surface for a two-person
+   allowlist.
 
 **Troubleshooting**: if a real admin still gets 401 after this, check the
 policy's Include list is actually the two admin emails (dashboard, not
