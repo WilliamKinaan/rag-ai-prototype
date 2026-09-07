@@ -144,7 +144,14 @@ both paths. For reference (or if it's ever recreated from scratch):
 
 1. **Note the team domain.** Zero Trust → Settings, or any Access page
    shows it, e.g. `yourteam.cloudflareaccess.com`. → `CF_ACCESS_TEAM_DOMAIN`.
-   (This account's: `bitter-smoke-8a9f.cloudflareaccess.com`.)
+   (This account's: `legal-assistant.cloudflareaccess.com` — renamed from
+   the auto-generated `bitter-smoke-8a9f.cloudflareaccess.com`. Renaming
+   the team name only requires updating `CF_ACCESS_TEAM_DOMAIN` here and
+   on the server — the AUD tag, login methods, and policy are all tied to
+   the Application/account, not the team name string, so nothing else
+   needed to change. See "Team name documentation" on the Settings page
+   for the full list of things a rename *can* affect, e.g. any custom
+   OAuth IdP's redirect URI — not applicable here since none are used.)
 2. **Create one self-hosted Application** (Access controls → Applications
    → Add an application) with two public-hostname destinations, since a
    single Application supports multiple destination rows:
