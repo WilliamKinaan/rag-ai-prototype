@@ -237,6 +237,76 @@ def _parse_lenient_json(raw: str) -> ContractReview:
         ) from e
 
 
+def call_qwen_review(text: str) -> ContractReview:
+    """Alibaba Cloud's Qwen models, via DashScope's OpenAI-compatible endpoint
+    (https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope).
+    Reuses the official `openai` SDK already installed for call_openai_review()
+    rather than adding a separate `dashscope` dependency for one provider -
+    same client class, just pointed at a different base_url.
+
+    Uses the same prompt-enforced-schema + lenient-parse approach as
+    call_mistral_review() rather than OpenAI's .parse()/strict response_format:
+    DashScope's json_object mode (https://www.alibabacloud.com/help/en/model-studio/qwen-structured-output)
+    guarantees valid JSON, not a specific schema, and only newer Qwen model
+    versions support it at all - prompt-enforced + lenient parsing degrades
+    gracefully either way. json_object mode also requires the literal word
+    "json" somewhere in the prompt (DashScope 400s otherwise), which the
+    schema-hint system message below already satisfies.
+    """
+    import openai
+
+    api_key = os.environ.get("QWEN_API_KEY")
+    if not api_key:
+        raise ReviewConfigError(
+            "QWEN_API_KEY is not set. Create a key on the Model Studio "
+            "console's API Key page (bailian.console.alibabacloud.com) and "
+            "put it in a .env file at the project root (see .env.example)."
+        )
+
+    # Unlike OpenAI/Anthropic/Mistral, DashScope's compatible-mode endpoint
+    # is workspace- and region-scoped, not one fixed public URL - the
+    # console's model-service page shows the exact host for your account
+    # (observed shape: https://<workspace-id>.<region>.maas.aliyuncs.com/compatible-mode/v1,
+    # e.g. Germany/eu-central-1). QWEN_BASE_URL carries that per-account
+    # value; the generic international host below is a fallback for
+    # whichever account setup it does work for, not something to rely on.
+    base_url = os.environ.get("QWEN_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1")
+    client = openai.OpenAI(api_key=api_key, base_url=base_url)
+
+    schema_hint = ContractReview.model_json_schema()
+    messages = [
+        {"role": "system", "content": REVIEW_SYSTEM_PROMPT},
+        {
+            "role": "system",
+            "content": (
+                "Respond with ONLY a single JSON object that is a *direct "
+                "instance* of this JSON Schema - i.e. your top-level object "
+                "must itself have a \"sections\" key, exactly like the "
+                "schema's \"properties\". Do not wrap it under a "
+                "\"ContractReview\" key or any other key, do not include "
+                "\"$schema\" or other schema-metadata keys in your answer, "
+                f"no other text, no markdown code fences:\n{json.dumps(schema_hint)}"
+            ),
+        },
+        {"role": "user", "content": _build_user_message(text)},
+    ]
+
+    try:
+        response = client.chat.completions.create(
+            # Unversioned "-plus" alias - a general-purpose Qwen model. Qwen
+            # model names/versions move fast; if this 400s, check
+            # help.aliyun.com/en/model-studio for current model IDs.
+            model="qwen-plus",
+            messages=messages,
+            response_format={"type": "json_object"},
+        )
+    except openai.APIError as e:
+        raise ReviewUpstreamError(f"Qwen API error: {e}") from e
+
+    raw = response.choices[0].message.content
+    return _parse_lenient_json(raw)
+
+
 def call_openai_review(text: str) -> ContractReview:
     """Official `openai` SDK (this repo's house style is raw httpx for
     Mistral, but there's no prior OpenAI integration to match, and both the
@@ -328,6 +398,7 @@ PROVIDERS = {
     "mistral": call_mistral_review,
     "openai": call_openai_review,
     "anthropic": call_anthropic_review,
+    "qwen": call_qwen_review,
 }
 
 
