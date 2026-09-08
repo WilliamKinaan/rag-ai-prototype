@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Model Evaluation</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="disclaimer">
+    ⚠️ <strong>Testing prototype — not legal advice.</strong> These scores
+    measure how closely a model's contract review matches what a lawyer
+    already flagged on a fixed set of sample documents. They say nothing
+    about performance on a real, unseen contract.
+  </div>
+
+  <header>
+    <p class="back-link"><a href="/">← Back to home</a></p>
+    <h1>Model Evaluation</h1>
+    <p class="subtitle">
+      How each hosted model's contract review compares against a lawyer's
+      own flags on the same documents.
+    </p>
+  </header>
+
+  <main>
+    <section id="baseline-results" class="step">
+      <h2>Direct model calls (baseline)</h2>
+      <p>
+        Phase 1: each model reviews a document on its own, no retrieval
+        involved — the same call <a href="/legal.html">Legal Assistant</a>
+        makes. Later phases will add their own sections here:
+        RAG-augmented, then RAG-only strict mode.
+      </p>
+      <div id="results-list">Loading…</div>
+    </section>
+
+    <section class="step">
+      <button id="evaluate-btn" type="button">Evaluate now</button>
+      <p class="subtitle">
+        Re-runs the baseline evaluation against the lawyer-labeled document
+        set. Admin sign-in required.
+      </p>
+      <div id="evaluate-status"></div>
+    </section>
+  </main>
+
+  <script>window.SUPPRESS_RATE_LIMIT_BADGE = true;</script>
+  <script src="/common.js"></script>
+  <script src="/evaluation.js"></script>
+</body>
+</html>

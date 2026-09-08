@@ -68,11 +68,17 @@ destination.
 | `/admin` | GET | `Depends(cf_access.require_admin)` directly on the route |
 | `/api/admin/whoami` | GET | via `admin_router`'s `dependencies=` |
 | `/api/admin/ping` | POST | via `admin_router`'s `dependencies=` |
+| `/api/admin/legal-eval/run` | POST | via `admin_router`'s `dependencies=` |
 | `/legal.html` | GET | `Depends(cf_access.require_admin)` directly on the route |
 | `/api/legal-review` | POST | `Depends(cf_access.require_admin)` directly on the route |
 
 `whoami` and `ping` are placeholders proving the pattern end-to-end (one
 read, one privileged/mutating-style call) — not real admin features yet.
+`legal-eval/run` (the Model Evaluation page's "Evaluate now" button — see
+`plans/phase4-model-evaluation.md`) is the same kind of stub for now; it
+joined `admin_router` like `ping` did, so it's covered by the existing
+`/api/admin*` Application destination (see §5) automatically, with no
+Cloudflare dashboard change needed.
 
 `/legal.html` (the Legal Assistant page) and its backend,
 `/api/legal-review`, are the first real feature gated this way — made

@@ -5,3 +5,4 @@ __pycache__/
 .claude/settings.local.json
 src/test.py
 .env
+data/legal_eval_results.json*

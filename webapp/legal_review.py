@@ -401,6 +401,16 @@ PROVIDERS = {
     "qwen": call_qwen_review,
 }
 
+# Single source of truth for how each provider is displayed - matches
+# legal.html's dropdown wording. Used by webapp/legal_eval.py's scorecard
+# so that page doesn't keep a second, driftable copy of these strings.
+PROVIDER_LABELS = {
+    "mistral": "Mistral (ministral-8b)",
+    "openai": "OpenAI (gpt-4o-mini)",
+    "anthropic": "Anthropic (Claude Sonnet 5)",
+    "qwen": "Qwen (qwen-plus)",
+}
+
 
 def review_contract(provider: str, text: str) -> ContractReview:
     if provider not in PROVIDERS:
