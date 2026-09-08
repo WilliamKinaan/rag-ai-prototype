@@ -45,6 +45,7 @@ from loader import load_documents  # noqa: E402
 from query import search  # noqa: E402
 
 import cf_access  # noqa: E402
+import legal_eval  # noqa: E402
 import legal_rate_limiter  # noqa: E402
 import legal_review  # noqa: E402
 import llm  # noqa: E402
@@ -406,6 +407,26 @@ def api_corpus_document(source: str):
     return {"source": source, "title": _doc_title(text) or source, "text": text}
 
 
+@app.get("/api/legal-eval/results")
+def api_legal_eval_results(approach: str = "baseline"):
+    """Model Evaluation scorecard (Phase 4 - see
+    plans/phase4-model-evaluation.md). Public, unlike the "Evaluate now"
+    action below - these are just scores, not a cost-bearing call. Not
+    gated behind _require_rag_index() either: pure JSON file I/O, works
+    even with SKIP_RAG_INDEX set.
+
+    `approach` defaults to "baseline" (Phase 1, direct-model calls - the
+    only one with anything wired up right now); "rag"/"rag_only" are
+    reserved for Phase 2/3's evaluations once those approaches exist.
+    """
+    if approach not in legal_eval.APPROACHES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown approach '{approach}'. Choose one of: {', '.join(legal_eval.APPROACHES)}.",
+        )
+    return {"approach": approach, "results": legal_eval.get_results_for_display(approach)}
+
+
 # --- admin (Cloudflare Access protected) ---------------------------------
 #
 # See webapp/cf_access.py and CONTEXT-admin-auth.md for the full design.
@@ -428,6 +449,22 @@ def admin_ping(identity: dict = Depends(cf_access.require_admin)):
     """Stub privileged action - proves a mutation-style admin call round
     trips end to end. Replace/extend with real admin operations as they're
     built; each new one just joins this router.
+    """
+    return {"status": "ok", "by": identity["email"]}
+
+
+@admin_router.post("/legal-eval/run")
+def admin_run_legal_eval(identity: dict = Depends(cf_access.require_admin)):
+    """"Evaluate now" on the (public) Model Evaluation page - stub, mirrors
+    admin_ping above. Only the "baseline" (Phase 1, direct-model) approach
+    is wired at all right now; real logic for it - run each lawyer-labeled
+    document through legal_review.PROVIDERS, score against the lawyer's
+    flags, legal_eval.save_results("baseline", ...) - is future work, to
+    be specified later (see plans/phase4-model-evaluation.md's Out of
+    Scope). Phase 2/3 ("rag"/"rag_only") get their own runners once those
+    approaches exist. Deliberately does not write anything to
+    legal_eval's results file yet: a fake/zero score would be worse than
+    showing "not yet evaluated".
     """
     return {"status": "ok", "by": identity["email"]}
 
