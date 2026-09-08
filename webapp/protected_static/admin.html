@@ -37,10 +37,20 @@
     white-space: pre-wrap;
   }
   .muted { color: #666; font-size: 0.9rem; }
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .logout-link { color: #666; font-size: 0.85rem; text-decoration: none; }
+  .logout-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
-  <h1>Admin</h1>
+  <div class="page-header">
+    <h1>Admin</h1>
+    <a class="logout-link" href="/cdn-cgi/access/logout">Log out</a>
+  </div>
   <p class="muted">
     Placeholder admin area — reaching this page already required a valid
     Cloudflare Access login. Real admin features get added here later;
