@@ -27,6 +27,15 @@ unaffected and stays public — including the landing page's link to
 `/legal.html` itself (see §2): everyone can see the card, only an
 authenticated admin gets past the login it now triggers.
 
+**Logging out**: both protected pages (`/admin`, `/legal.html`) have a
+"Log out" link pointing to `/cdn-cgi/access/logout` — a Cloudflare-handled
+endpoint (under the reserved `/cdn-cgi/*` prefix, served directly at the
+edge for any Cloudflare-proxied zone), not a route in this app. It clears
+the `CF_Authorization` session cookie for the hostname, so the next visit
+to either page requires a fresh login. No dashboard configuration needed
+for this - `/cdn-cgi/*` doesn't need to be listed as an Application
+destination.
+
 ## 1. How the auth flow works
 
 1. A browser requests `https://rag.williamkinaan.com/admin` (or any
